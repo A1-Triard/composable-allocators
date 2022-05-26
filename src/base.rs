@@ -3,7 +3,8 @@ use core::ptr::{self, NonNull};
 
 /// # Safety
 ///
-/// An implementer of this trait should return `true` from [`has_allocated`]
+/// An implementer of this trait should return `true` from
+/// [`has_allocated`](Composable::has_allocated)
 /// if and only if the passed pointer is denoting to
 /// [currently allocated block](https://doc.rust-lang.org/core/alloc/trait.Allocator.html#currently-allocated-memory).
 pub unsafe trait Composable: Allocator {
