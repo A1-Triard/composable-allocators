@@ -17,5 +17,9 @@ exclude = [
     "ensure_no_std",
 ]
 
+[features]
+default = ["alloc"]
+alloc = []
+
 [badges]
 maintenance = { status = "experimental" }

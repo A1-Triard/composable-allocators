@@ -4,14 +4,19 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(slice_ptr_get)]
 
+#![deny(warnings)]
+
 #![no_std]
 
+#[cfg(feature="alloc")]
 extern crate alloc as alloc_crate;
 
 mod base;
 pub use base::*;
 
+#[cfg(feature="alloc")]
 mod global;
+#[cfg(feature="alloc")]
 pub use global::*;
 
 mod impossible;
@@ -22,3 +27,6 @@ pub use non_working::*;
 
 mod stacked;
 pub use stacked::*;
+
+mod freelist;
+pub use freelist::*;

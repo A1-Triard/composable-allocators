@@ -1,5 +1,5 @@
 use crate::base::*;
-use alloc_crate::alloc::{self, AllocError, Allocator};
+use core::alloc::{self, AllocError, Allocator};
 use core::ptr::NonNull;
 
 #[derive(Debug, Copy, Clone)]

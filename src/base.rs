@@ -1,4 +1,4 @@
-use alloc_crate::alloc::{self, AllocError, Allocator};
+use core::alloc::{self, AllocError, Allocator};
 use core::ptr::{self, NonNull};
 
 pub unsafe trait Composable: Allocator {
