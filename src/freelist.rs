@@ -1,6 +1,7 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
 use core::cell::Cell;
+use core::cmp::min;
 use core::ptr::{self, NonNull};
 
 #[derive(Clone, Copy)]
@@ -12,29 +13,33 @@ pub struct Freelist<A: Allocator> {
     base: A,
     list: Cell<Option<NonNull<[u8]>>>,
     layout: alloc::Layout,
-    low_bound: alloc::Layout,
+    tolerance: alloc::Layout,
 }
 
-impl<A: Composable> Freelist<A> {
+impl<A: Allocator> Freelist<A> {
     /// # Safety
     ///
     /// Arguments should satisfy
-    /// `low_bound.size() <= layout.size() && low_bound.align() <= layout.align()`.
-    pub unsafe fn new_unchecked(base: A, layout: alloc::Layout, low_bound: alloc::Layout) -> Self {
-        Freelist { base, list: Cell::new(None), layout, low_bound }
+    /// `tolerance.size() <= layout.size() && tolerance.align() <= layout.align()`.
+    pub unsafe fn with_tolerance_unchecked(base: A, layout: alloc::Layout, tolerance: alloc::Layout) -> Self {
+        Freelist { base, list: Cell::new(None), layout, tolerance }
     }
 
-    pub fn new(base: A, layout: alloc::Layout, low_bound: alloc::Layout) -> Self {
-        let low_bound = unsafe { alloc::Layout::from_size_align_unchecked(
-            min(low_bound.size(), layout.size()),
-            min(low_bound.align(), layout.align()),
+    pub fn with_tolerance(base: A, layout: alloc::Layout, tolerance: alloc::Layout) -> Self {
+        let tolerance = unsafe { alloc::Layout::from_size_align_unchecked(
+            min(tolerance.size(), layout.size()),
+            min(tolerance.align(), layout.align()),
         ) };
-        Freelist { base, list: Cell::new(None), layout, low_bound }
+        Freelist { base, list: Cell::new(None), layout, tolerance }
+    }
+
+    pub fn new(base: A, layout: alloc::Layout) -> Self {
+        unsafe { Self::with_tolerance_unchecked(base, layout, layout) }
     }
 
     fn manage(&self, layout: alloc::Layout) -> bool {
-        layout.size() in self.low_bound.size() ..= self.layout.size() &&
-        layout.align() in self.low_bound.align() ..= self.layout.size()
+        (self.tolerance.size() ..= self.layout.size()).contains(&layout.size()) &&
+        (self.tolerance.align() ..= self.layout.size()).contains(&layout.align())
     }
 }
 

@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(default_alloc_error_handler)]
+#![feature(explicit_generic_args_with_impl_trait)]
 #![feature(iter_collect_into)]
 #![feature(start)]
 
@@ -44,12 +45,10 @@ pub fn rust_oom(_layout: Layout) -> ! {
 
 use alloc::vec::Vec;
 use composable_allocators::{Global, Or, Stacked};
-use core::mem::MaybeUninit;
 
 #[start]
 pub fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let mut buf: [MaybeUninit<u8>; 256] = unsafe { MaybeUninit::uninit().assume_init() };
-    Stacked::with(&mut buf, |stacked| {
+    Stacked::with_size::<256, _>(|stacked| {
         let mut vec = Vec::new_in(Or(stacked, Global));
         [0u8, 1, 2, 3].iter().copied().collect_into(&mut vec);
     });
