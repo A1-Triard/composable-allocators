@@ -5,6 +5,10 @@
 #![feature(slice_ptr_get)]
 
 #![deny(warnings)]
+#![doc(test(attr(deny(warnings))))]
+#![doc(test(attr(allow(dead_code))))]
+#![doc(test(attr(allow(unused_variables))))]
+#![allow(clippy::collapsible_else_if)]
 
 #![no_std]
 

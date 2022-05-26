@@ -1,7 +1,21 @@
 use core::alloc::{self, AllocError, Allocator};
 use core::ptr::{self, NonNull};
 
+/// # Safety
+///
+/// An implementer of this trait should return `true` from [`has_allocated`]
+/// if and only if the passed pointer is denoting to
+/// [currently allocated block](https://doc.rust-lang.org/core/alloc/trait.Allocator.html#currently-allocated-memory).
 pub unsafe trait Composable: Allocator {
+    /// # Safety
+    ///
+    /// The `ptr` parameter should denote a memory block,
+    /// [currently allocated](https://doc.rust-lang.org/core/alloc/trait.Allocator.html#currently-allocated-memory)
+    /// by this or any other [`Allocator`].
+    ///
+    /// The `layout` parameter should
+    /// [fit](https://doc.rust-lang.org/core/alloc/trait.Allocator.html#memory-fitting)
+    /// the memory block denoting by `ptr`.
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool;
 }
 
