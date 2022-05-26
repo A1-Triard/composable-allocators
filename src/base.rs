@@ -5,6 +5,12 @@ pub unsafe trait Composable: Allocator {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool;
 }
 
+unsafe impl<'a, T: Composable> Composable for &'a T {
+    unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool {
+        (*self).has_allocated(ptr, layout)
+    }
+}
+
 pub struct Or<Primary: Allocator, Fallback: Allocator>(pub Primary, pub Fallback);
 
 unsafe impl<Primary: Composable, Fallback: Composable> Composable for Or<Primary, Fallback> {
