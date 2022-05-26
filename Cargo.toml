@@ -1,0 +1,21 @@
+[package]
+edition = "2021"
+name = "composable-allocators"
+version = "0.0.1"
+#rust-version = "nightly"
+authors = ["warlock <internalmike@gmail.com>"]
+description = "Composable memory allocators for new allocator API."
+readme = "README.md"
+documentation = "https://docs.rs/composable-allocators/"
+keywords = ["allocator", "memory", "composable", "fallback", "never_type"]
+categories = ["memory-management", "no-std"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/A1-Triard/composable-allocators"
+
+[workspace]
+exclude = [
+    "ensure_no_std",
+]
+
+[badges]
+maintenance = { status = "experimental" }
