@@ -18,7 +18,12 @@ impl Drop for Stacked {
 }
 
 impl Stacked {
-    pub fn with<T>(buf: &mut [MaybeUninit<u8>], f: impl for<'a> FnOnce(&'a Stacked) -> T) -> T {
+    pub fn with_size<const SIZE: usize, T>(f: impl for<'a> FnOnce(&'a Stacked) -> T) -> T {
+        let mut buf: [MaybeUninit<u8>; SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
+        Self::with_buf(&mut buf, f)
+    }
+
+    pub fn with_buf<T>(buf: &mut [MaybeUninit<u8>], f: impl for<'a> FnOnce(&'a Stacked) -> T) -> T {
         let buf_len = buf.len();
         assert!(buf_len < isize::MAX as usize);
         let stacked = Stacked {
