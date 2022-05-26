@@ -1,3 +1,8 @@
+//! **Crate features**
+//!
+//! * `"alloc"`
+//! Enabled by default. Disable to unlink `alloc` crate.
+
 #![feature(allocator_api)]
 #![feature(const_trait_impl)]
 #![feature(never_type)]
