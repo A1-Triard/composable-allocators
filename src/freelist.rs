@@ -118,9 +118,9 @@ impl<
         assert!(LAYOUT_ALIGN <= isize::MAX as usize);
         assert!(TOLERANCE_SIZE <= isize::MAX as usize);
         assert!(TOLERANCE_SIZE <= isize::MAX as usize);
+        assert!(is_power_of_two(LAYOUT_ALIGN) && is_power_of_two(TOLERANCE_ALIGN));
         assert!(((LAYOUT_SIZE + LAYOUT_ALIGN - 1) / LAYOUT_ALIGN) * LAYOUT_ALIGN <= isize::MAX as usize);
         assert!(((TOLERANCE_SIZE + TOLERANCE_ALIGN - 1) / TOLERANCE_ALIGN) * TOLERANCE_ALIGN <= isize::MAX as usize);
-        assert!(is_power_of_two(LAYOUT_ALIGN) && is_power_of_two(TOLERANCE_ALIGN));
         assert!(TOLERANCE_SIZE <= LAYOUT_SIZE && TOLERANCE_ALIGN <= LAYOUT_ALIGN);
         assert!(LAYOUT_SIZE >= MIN_LAYOUT_SIZE && LAYOUT_ALIGN >= MIN_LAYOUT_ALIGN);
         CtParams { limit }
