@@ -17,13 +17,8 @@ pub unsafe trait Params {
 pub struct CtParams<const BUF_LEN: usize>(());
 
 impl<const BUF_LEN: usize> CtParams<BUF_LEN> {
-    #[cfg_attr(not(debug_assertions), no_panic)]
-    const fn assert() {
-        assert!(BUF_LEN <= isize::MAX as usize);
-    }
-
     pub const fn new() -> Self {
-        Self::assert();
+        assert!(BUF_LEN <= isize::MAX as usize);
         CtParams(())
     }
 }

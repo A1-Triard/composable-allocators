@@ -34,8 +34,7 @@ impl<
     const TOLERANCE_ALIGN: usize,
     const TOP: usize,
 > CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, TOP> {
-    #[cfg_attr(not(debug_assertions), no_panic)]
-    const fn assert() {
+    pub const fn new() -> Self {
         assert!(LAYOUT_SIZE <= isize::MAX as usize);
         assert!(LAYOUT_ALIGN <= isize::MAX as usize);
         assert!(TOLERANCE_SIZE <= isize::MAX as usize);
@@ -44,10 +43,6 @@ impl<
         assert!(((TOLERANCE_SIZE + TOLERANCE_ALIGN - 1) / TOLERANCE_ALIGN) * TOLERANCE_ALIGN <= isize::MAX as usize);
         assert!(is_power_of_two(LAYOUT_ALIGN) && is_power_of_two(TOLERANCE_ALIGN));
         assert!(TOLERANCE_SIZE <= LAYOUT_SIZE && TOLERANCE_ALIGN <= LAYOUT_ALIGN);
-    }
-
-    pub const fn new() -> Self {
-        Self::assert();
         CtParams(())
     }
 }
