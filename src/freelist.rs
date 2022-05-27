@@ -117,7 +117,7 @@ unsafe impl Params for RtParams {
 
 #[derive(Clone, Copy)]
 struct Node {
-    next: Option<NonNull<[u8]>>,
+    next: Option<NonNull<u8>>,
 }
 
 pub struct Freelist<P: Params, A: Allocator> {
@@ -153,7 +153,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
             let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
             self.list.set(Node { next });
             self.list_len.set(self.list_len.get() - 1);
-            Ok(list)
+            Ok(NonNull::slice_from_raw_parts(list, self.params.layout().size()))
         } else {
             self.base.allocate(self.params.layout())
         }
@@ -164,7 +164,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
             return self.base.deallocate(ptr, layout);
         }
         ptr::write(ptr.as_ptr() as *mut Node, self.list.get());
-        self.list.set(Node { next: Some(NonNull::slice_from_raw_parts(ptr, self.params.layout().size())) });
+        self.list.set(Node { next: Some(ptr) });
         self.list_len.set(self.list_len.get() + 1);
     }
 
