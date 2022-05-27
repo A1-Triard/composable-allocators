@@ -115,6 +115,10 @@ unsafe impl<P: Params> Composable for Stacked<P> {
             false
         }
     }
+
+    fn manages_on_its_own(&self, _layout: alloc::Layout) -> bool {
+        false
+    }
 }
 
 unsafe impl<P: Params> Allocator for Stacked<P> {

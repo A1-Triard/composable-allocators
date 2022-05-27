@@ -218,6 +218,11 @@ unsafe impl<P: Params, A: Composable> Composable for Freelist<P, A> {
         let layout = if self.manage(layout) { self.params.layout() } else { layout };
         self.base.has_allocated(ptr, layout)
     }
+
+    fn manages_on_its_own(&self, layout: alloc::Layout) -> bool {
+        let layout = if self.manage(layout) { self.params.layout() } else { layout };
+        self.base.manages_on_its_own(layout)
+    }
 }
 
 unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {

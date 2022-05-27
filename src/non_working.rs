@@ -13,6 +13,10 @@ unsafe impl Composable for NonWorking {
     unsafe fn has_allocated(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
         false
     }
+
+    fn manages_on_its_own(&self, _layout: alloc::Layout) -> bool {
+        false
+    }
 }
 
 unsafe impl Allocator for NonWorking {
