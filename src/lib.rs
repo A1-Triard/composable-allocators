@@ -8,6 +8,7 @@
 #![feature(never_type)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(slice_ptr_get)]
+#![feature(slice_ptr_len)]
 
 #![deny(warnings)]
 #![doc(test(attr(deny(warnings))))]
@@ -22,6 +23,10 @@ extern crate alloc as alloc_crate;
 
 mod base;
 pub use base::*;
+
+pub mod or;
+
+pub mod up_to;
 
 #[cfg(feature="alloc")]
 mod global;
