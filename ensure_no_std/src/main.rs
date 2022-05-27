@@ -44,7 +44,8 @@ pub fn rust_oom(_layout: Layout) -> ! {
 }
 
 use alloc::vec::Vec;
-use composable_allocators::{Global, Or};
+use composable_allocators::Global;
+use composable_allocators::or::Or;
 use composable_allocators::stacked::{self};
 
 #[start]
