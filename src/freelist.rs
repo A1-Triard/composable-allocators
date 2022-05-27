@@ -122,14 +122,14 @@ struct Node {
 
 pub struct Freelist<P: Params, A: Allocator> {
     base: A,
-    list: Cell<Option<NonNull<[u8]>>>,
+    list: Cell<Node>,
     list_len: Cell<usize>,
     params: P,
 }
 
 impl<P: Params, A: Allocator> Freelist<P, A> {
     pub fn new(params: P, base: A) -> Self {
-        Freelist { base, list: Cell::new(None), list_len: Cell::new(0), params }
+        Freelist { base, list: Cell::new(Node { next: None }), list_len: Cell::new(0), params }
     }
 
     fn manage(&self, layout: alloc::Layout) -> bool {
@@ -149,9 +149,9 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         if !self.manage(layout) {
             return self.base.allocate(layout);
         }
-        if let Some(list) = self.list.get() {
+        if let Some(list) = self.list.get().next {
             let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
-            self.list.set(next);
+            self.list.set(Node { next });
             self.list_len.set(self.list_len.get() - 1);
             Ok(list)
         } else {
@@ -163,8 +163,8 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         if self.list_len.get() == self.params.top() || !self.manage(layout) {
             return self.base.deallocate(ptr, layout);
         }
-        ptr::write(ptr.as_ptr() as *mut Node, Node { next: self.list.get() });
-        self.list.set(Some(NonNull::slice_from_raw_parts(ptr, self.params.layout().size())));
+        ptr::write(ptr.as_ptr() as *mut Node, self.list.get());
+        self.list.set(Node { next: Some(NonNull::slice_from_raw_parts(ptr, self.params.layout().size())) });
         self.list_len.set(self.list_len.get() + 1);
     }
 
