@@ -1,18 +1,18 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
 use core::cell::Cell;
-use core::cmp::min;
 use core::ptr::{self, NonNull};
 
 /// # Safety
 ///
-/// Both methods should return constants, i.e. same values on every call.
+/// All methods should return constants, i.e. same values on every call.
 ///
 /// Returned values should satisfy
 /// `tolerance().size() <= layout().size() && tolerance().align() <= layout().align()`.
 pub unsafe trait Params {
     fn layout(&self) -> alloc::Layout;
     fn tolerance(&self) -> alloc::Layout;
+    fn top(&self) -> usize;
 }
 
 pub struct CtParams<
@@ -20,6 +20,7 @@ pub struct CtParams<
     const LAYOUT_ALIGN: usize,
     const TOLERANCE_SIZE: usize,
     const TOLERANCE_ALIGN: usize,
+    const TOP: usize,
 >(());
 
 const fn is_power_of_two(x: usize) -> bool {
@@ -31,7 +32,8 @@ impl<
     const LAYOUT_ALIGN: usize,
     const TOLERANCE_SIZE: usize,
     const TOLERANCE_ALIGN: usize,
-> CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN> {
+    const TOP: usize,
+> CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, TOP> {
     #[cfg_attr(not(debug_assertions), no_panic)]
     const fn assert() {
         assert!(LAYOUT_SIZE <= isize::MAX as usize);
@@ -55,7 +57,8 @@ impl<
     const LAYOUT_ALIGN: usize,
     const TOLERANCE_SIZE: usize,
     const TOLERANCE_ALIGN: usize,
-> const Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN> {
+    const TOP: usize
+> const Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, TOP> {
     fn default() -> Self { Self::new() }
 }
 
@@ -64,7 +67,8 @@ unsafe impl<
     const LAYOUT_ALIGN: usize,
     const TOLERANCE_SIZE: usize,
     const TOLERANCE_ALIGN: usize,
-> const Params for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN> {
+    const TOP: usize,
+> const Params for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, TOP> {
     fn layout(&self) -> alloc::Layout {
         unsafe { alloc::Layout::from_size_align_unchecked(LAYOUT_SIZE, LAYOUT_ALIGN) }
     }
@@ -72,11 +76,14 @@ unsafe impl<
     fn tolerance(&self) -> alloc::Layout {
         unsafe { alloc::Layout::from_size_align_unchecked(TOLERANCE_SIZE, TOLERANCE_ALIGN) }
     }
+
+    fn top(&self) -> usize { TOP }
 }
 
 pub struct RtParams {
     layout: alloc::Layout,
     tolerance: alloc::Layout,
+    top: usize,
 }
 
 impl RtParams {
@@ -84,16 +91,13 @@ impl RtParams {
     ///
     /// Arguments should satisfy
     /// `tolerance.size() <= layout.size() && tolerance.align() <= layout.align()`.
-    pub unsafe fn new_unchecked(layout: alloc::Layout, tolerance: alloc::Layout) -> Self {
-        RtParams { layout, tolerance }
+    pub unsafe fn new_unchecked(layout: alloc::Layout, tolerance: alloc::Layout, top: usize) -> Self {
+        RtParams { layout, tolerance, top }
     }
 
-    pub fn new(layout: alloc::Layout, tolerance: alloc::Layout) -> Self {
-        let tolerance = unsafe { alloc::Layout::from_size_align_unchecked(
-            min(tolerance.size(), layout.size()),
-            min(tolerance.align(), layout.align()),
-        ) };
-        RtParams { layout, tolerance }
+    pub fn new(layout: alloc::Layout, tolerance: alloc::Layout, top: usize) -> Self {
+        assert!(tolerance.size() <= layout.size() && tolerance.align() <= layout.align());
+        unsafe { RtParams::new_unchecked(layout, tolerance, top) }
     }
 }
 
@@ -101,6 +105,8 @@ unsafe impl Params for RtParams {
     fn layout(&self) -> alloc::Layout { self.layout }
 
     fn tolerance(&self) -> alloc::Layout { self.tolerance }
+
+    fn top(&self) -> usize { self.top }
 }
 
 #[derive(Clone, Copy)]
@@ -111,12 +117,13 @@ struct Node {
 pub struct Freelist<P: Params, A: Allocator> {
     base: A,
     list: Cell<Option<NonNull<[u8]>>>,
+    list_len: Cell<usize>,
     params: P,
 }
 
 impl<P: Params, A: Allocator> Freelist<P, A> {
     pub fn new(params: P, base: A) -> Self {
-        Freelist { base, list: Cell::new(None), params }
+        Freelist { base, list: Cell::new(None), list_len: Cell::new(0), params }
     }
 
     fn manage(&self, layout: alloc::Layout) -> bool {
@@ -139,6 +146,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         if let Some(list) = self.list.get() {
             let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
             self.list.set(next);
+            self.list_len.set(self.list_len.get() - 1);
             Ok(list)
         } else {
             self.base.allocate(self.params.layout())
@@ -146,11 +154,12 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
-        if !self.manage(layout) {
+        if self.list_len.get() == self.params.top() || !self.manage(layout) {
             return self.base.deallocate(ptr, layout);
         }
         ptr::write(ptr.as_ptr() as *mut Node, Node { next: self.list.get() });
         self.list.set(Some(NonNull::slice_from_raw_parts(ptr, self.params.layout().size())));
+        self.list_len.set(self.list_len.get() + 1);
     }
 
     unsafe fn grow(
