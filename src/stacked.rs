@@ -1,34 +1,91 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
 use core::cell::Cell;
-use core::mem::MaybeUninit;
+use core::mem::{MaybeUninit, transmute};
 use core::ptr::NonNull;
 
-pub struct Stacked {
-    buf_ptr: NonNull<u8>,
+/// # Safety
+///
+/// The [`buf_len`](Params::buf_len) method should
+/// return constant value (i.e. same value on every call).
+///
+/// Returning value should satisfy `buf_len() <= isize::MAX as usize`.
+pub unsafe trait Params {
+    fn buf_len(&self) -> usize;
+}
+
+pub struct CtParams<const BUF_LEN: usize>(());
+
+impl<const BUF_LEN: usize> CtParams<BUF_LEN> {
+    #[cfg_attr(not(debug_assertions), no_panic)]
+    const fn assert() {
+        assert!(BUF_LEN <= isize::MAX as usize);
+    }
+
+    pub const fn new() -> Self {
+        Self::assert();
+        CtParams(())
+    }
+}
+
+impl<const BUF_LEN: usize> const Default for CtParams<BUF_LEN> {
+    fn default() -> Self { Self::new() }
+}
+
+unsafe impl<const BUF_LEN: usize> const Params for CtParams<BUF_LEN> {
+    fn buf_len(&self) -> usize { BUF_LEN }
+}
+
+pub struct RtParams {
     buf_len: usize,
+}
+
+impl RtParams {
+    /// # Safety
+    ///
+    /// Argument should satisfy `buf_len <= isize::MAX as usize`.
+    pub unsafe fn new_unchecked(buf_len: usize) -> Self {
+        RtParams { buf_len }
+    }
+
+    pub fn new(buf_len: usize) -> Self {
+        assert!(buf_len <= isize::MAX as usize);
+        unsafe { Self::new_unchecked(buf_len) }
+    }
+}
+
+unsafe impl Params for RtParams {
+    fn buf_len(&self) -> usize { self.buf_len }
+}
+
+pub struct Stacked<P: Params> {
+    buf_ptr: NonNull<u8>,
+    params: P,
     allocated: Cell<usize>,
     allocations_count: Cell<usize>,
 }
 
-impl Drop for Stacked {
+impl<P: Params> Drop for Stacked<P> {
     fn drop(&mut self) {
         assert!(self.allocations_count.get() == 0, "memory leaks in Stacked allocator");
     }
 }
 
-impl Stacked {
-    pub fn with_size<const SIZE: usize, T>(f: impl for<'a> FnOnce(&'a Stacked) -> T) -> T {
-        let mut buf: [MaybeUninit<u8>; SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
-        Self::with_buf(&mut buf, f)
-    }
-
-    pub fn with_buf<T>(buf: &mut [MaybeUninit<u8>], f: impl for<'a> FnOnce(&'a Stacked) -> T) -> T {
-        let buf_len = buf.len();
-        assert!(buf_len <= isize::MAX as usize && (isize::MAX as usize) - buf_len >= buf.as_ptr() as usize);
+impl<P: Params> Stacked<P> {
+    /// # Safety
+    ///
+    /// `buf_ptr` should be a valid pointer to a slice with `params.buf_len()` bytes length.
+    ///
+    /// Arguments should satisfy
+    /// `(isize::MAX as usize) - params.buf_len() >= buf_ptr as usize`
+    pub unsafe fn with_params<T>(
+        params: P,
+        buf_ptr: NonNull<MaybeUninit<u8>>,
+        f: impl for<'a> FnOnce(&'a Stacked<P>) -> T
+    ) -> T {
         let stacked = Stacked {
-            buf_ptr: unsafe { NonNull::new_unchecked(buf.as_mut_ptr() as *mut u8) },
-            buf_len,
+            buf_ptr: transmute(buf_ptr),
+            params,
             allocated: Cell::new(0),
             allocations_count: Cell::new(0),
         };
@@ -36,22 +93,41 @@ impl Stacked {
     }
 }
 
-unsafe impl Composable for Stacked {
+pub fn with_size<const BUF_LEN: usize, T>(
+    f: impl for<'a> FnOnce(&'a Stacked<CtParams<BUF_LEN>>) -> T
+) -> T {
+    let mut buf: [MaybeUninit<u8>; BUF_LEN] = unsafe { MaybeUninit::uninit().assume_init() };
+    let buf_ptr = unsafe { NonNull::new_unchecked(buf.as_mut_ptr()) };
+    assert!((isize::MAX as usize) - BUF_LEN >= buf_ptr.as_ptr() as usize);
+    unsafe { Stacked::with_params(CtParams::<BUF_LEN>::new(), buf_ptr, f) }
+}
+
+pub fn with_buf<T>(
+    buf: &mut [MaybeUninit<u8>],
+    f: impl for<'a> FnOnce(&'a Stacked<RtParams>) -> T
+) -> T {
+    let buf_len = buf.len();
+    assert!(buf_len <= isize::MAX as usize && (isize::MAX as usize) - buf_len >= buf.as_ptr() as usize);
+    let buf_ptr = unsafe { NonNull::new_unchecked(buf.as_mut_ptr()) };
+    unsafe { Stacked::with_params(RtParams::new_unchecked(buf_len), buf_ptr, f) }
+}
+
+unsafe impl<P: Params> Composable for Stacked<P> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
         if let Some(offset) = (ptr.as_ptr() as usize).checked_sub(self.buf_ptr.as_ptr() as usize) {
-            offset < self.buf_len && self.buf_ptr.as_ptr().add(offset) == ptr.as_ptr()
+            offset < self.params.buf_len() && self.buf_ptr.as_ptr().add(offset) == ptr.as_ptr()
         } else {
             false
         }
     }
 }
 
-unsafe impl Allocator for Stacked {
+unsafe impl<P: Params> Allocator for Stacked<P> {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = unsafe { self.buf_ptr.as_ptr().add(self.allocated.get()) };
         let padding = (layout.align() - (ptr as usize) % layout.align()) % layout.align();
         let size = padding.checked_add(layout.size()).ok_or(AllocError)?;
-        if size > self.buf_len - self.allocated.get() { return Err(AllocError); }
+        if size > self.params.buf_len() - self.allocated.get() { return Err(AllocError); }
         self.allocations_count.set(self.allocations_count.get().checked_add(1).ok_or(AllocError)?);
         let res = NonNull::slice_from_raw_parts(
             unsafe { NonNull::new_unchecked(ptr.add(padding)) },

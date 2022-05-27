@@ -34,8 +34,6 @@ pub use impossible::*;
 mod non_working;
 pub use non_working::*;
 
-mod stacked;
-pub use stacked::*;
+pub mod stacked;
 
-mod freelist;
-pub use freelist::*;
+pub mod freelist;
