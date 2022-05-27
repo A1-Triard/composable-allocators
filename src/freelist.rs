@@ -140,6 +140,7 @@ impl<P: Params, A: Allocator> Freelist<P, A> {
 
 unsafe impl<P: Params, A: Composable> Composable for Freelist<P, A> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool {
+        let layout = if self.manage(layout) { self.params.layout() } else { layout };
         self.base.has_allocated(ptr, layout)
     }
 }
