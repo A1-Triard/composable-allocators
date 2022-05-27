@@ -1,14 +1,21 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
 use core::cell::Cell;
+use core::mem::{align_of, size_of};
 use core::ptr::{self, NonNull};
+
+pub const MIN_LAYOUT_SIZE: usize = size_of::<Node>();
+
+pub const MIN_LAYOUT_ALIGN: usize = align_of::<Node>();
 
 /// # Safety
 ///
 /// All methods should return constants, i.e. same values on every call.
 ///
 /// Returned values should satisfy
-/// `tolerance().size() <= layout().size() && tolerance().align() <= layout().align()`.
+/// `tolerance().size() <= layout().size() && tolerance().align() <= layout().align()`,
+/// and
+/// `layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN`.
 pub unsafe trait Params {
     fn layout(&self) -> alloc::Layout;
     fn tolerance(&self) -> alloc::Layout;
@@ -43,6 +50,7 @@ impl<
         assert!(((TOLERANCE_SIZE + TOLERANCE_ALIGN - 1) / TOLERANCE_ALIGN) * TOLERANCE_ALIGN <= isize::MAX as usize);
         assert!(is_power_of_two(LAYOUT_ALIGN) && is_power_of_two(TOLERANCE_ALIGN));
         assert!(TOLERANCE_SIZE <= LAYOUT_SIZE && TOLERANCE_ALIGN <= LAYOUT_ALIGN);
+        assert!(LAYOUT_SIZE >= MIN_LAYOUT_SIZE && LAYOUT_ALIGN >= MIN_LAYOUT_ALIGN);
         CtParams(())
     }
 }
@@ -85,13 +93,16 @@ impl RtParams {
     /// # Safety
     ///
     /// Arguments should satisfy
-    /// `tolerance.size() <= layout.size() && tolerance.align() <= layout.align()`.
+    /// `tolerance.size() <= layout.size() && tolerance.align() <= layout.align()`,
+    /// and
+    /// `layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN`.
     pub unsafe fn new_unchecked(layout: alloc::Layout, tolerance: alloc::Layout, top: usize) -> Self {
         RtParams { layout, tolerance, top }
     }
 
     pub fn new(layout: alloc::Layout, tolerance: alloc::Layout, top: usize) -> Self {
         assert!(tolerance.size() <= layout.size() && tolerance.align() <= layout.align());
+        assert!(layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN);
         unsafe { RtParams::new_unchecked(layout, tolerance, top) }
     }
 }
