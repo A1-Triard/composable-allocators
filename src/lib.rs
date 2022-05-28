@@ -19,14 +19,14 @@
 #![no_std]
 
 #[cfg(feature="alloc")]
-extern crate alloc as alloc_crate;
+extern crate alloc;
 
 mod base;
 pub use base::*;
 
-pub mod or;
+pub mod fallbacked;
 
-pub mod up_to;
+pub mod limited_up_to;
 
 #[cfg(feature="alloc")]
 mod global;

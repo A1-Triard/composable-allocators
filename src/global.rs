@@ -1,4 +1,4 @@
-use alloc_crate::alloc::{self, AllocError, Allocator};
+use ::alloc::alloc::{self, AllocError, Allocator};
 use core::ptr::NonNull;
 
 #[derive(Debug, Copy, Clone)]

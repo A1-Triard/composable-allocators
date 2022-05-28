@@ -1,5 +1,6 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
+use core::hint::unreachable_unchecked;
 use core::ptr::NonNull;
 
 #[derive(Debug, Copy, Clone)]
@@ -9,13 +10,13 @@ impl const Default for NonWorking {
     fn default() -> Self { NonWorking }
 }
 
-unsafe impl Composable for NonWorking {
+unsafe impl Fallbackable for NonWorking {
     unsafe fn has_allocated(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
         false
     }
 
-    fn manages_on_its_own(&self, _layout: alloc::Layout) -> bool {
-        false
+    fn allows_fallback(&self, _layout: alloc::Layout) -> bool {
+        true
     }
 }
 
@@ -29,7 +30,7 @@ unsafe impl Allocator for NonWorking {
     }
 
     unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) {
-        unreachable!()
+        unreachable_unchecked()
     }
 
     unsafe fn grow(

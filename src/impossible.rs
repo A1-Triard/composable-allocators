@@ -5,12 +5,12 @@ use core::ptr::NonNull;
 #[derive(Copy, Clone)]
 pub struct Impossible(pub !);
 
-unsafe impl Composable for Impossible {
+unsafe impl Fallbackable for Impossible {
     unsafe fn has_allocated(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
         self.0
     }
 
-    fn manages_on_its_own(&self, _layout: alloc::Layout) -> bool {
+    fn allows_fallback(&self, _layout: alloc::Layout) -> bool {
         self.0
     }
 }

@@ -57,32 +57,35 @@ unsafe impl Params for RtParams {
     fn layout(&self) -> alloc::Layout { self.layout }
 }
 
-pub struct UpTo<P: Params, A: Allocator> {
+pub struct LimitedUpTo<P: Params, A: Allocator> {
     params: P,
     base: A,
 }
 
-impl<P: Params, A: Allocator> UpTo<P, A> {
+impl<P: Params, A: Allocator> LimitedUpTo<P, A> {
     pub fn new(params: P, base: A) -> Self {
-        UpTo { params, base }
+        LimitedUpTo { params, base }
+    }
+
+    fn manages(&self, layout: alloc::Layout) -> bool {
+        layout.size() <= self.params.layout().size() &&
+        layout.align() <= self.params.layout().align()
     }
 }
 
-unsafe impl<P: Params, A: Allocator> Composable for UpTo<P, A> {
+unsafe impl<P: Params, A: Allocator> Fallbackable for LimitedUpTo<P, A> {
     unsafe fn has_allocated(&self, _ptr: NonNull<u8>, layout: alloc::Layout) -> bool {
-        layout.size() <= self.params.layout().size() &&
-        layout.align() <= self.params.layout().align()
+        self.manages(layout)
     }
 
-    fn manages_on_its_own(&self, layout: alloc::Layout) -> bool {
-        layout.size() <= self.params.layout().size() &&
-        layout.align() <= self.params.layout().align()
+    fn allows_fallback(&self, layout: alloc::Layout) -> bool {
+        !self.manages(layout)
     }
 }
 
-unsafe impl<P: Params, A: Allocator> Allocator for UpTo<P, A> {
+unsafe impl<P: Params, A: Allocator> Allocator for LimitedUpTo<P, A> {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
-        if self.manages_on_its_own(layout) {
+        if self.manages(layout) {
             if let Ok(block) = self.base.allocate(layout) {
                 let len = min(block.len(), self.params.layout().size());
                 Ok(unsafe { NonNull::slice_from_raw_parts(NonNull::new_unchecked(block.as_mut_ptr()), len) })
@@ -104,7 +107,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for UpTo<P, A> {
         old_layout: alloc::Layout, 
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
-        if self.manages_on_its_own(new_layout) {
+        if self.manages(new_layout) {
             if let Ok(block) = self.base.grow(ptr, old_layout, new_layout) {
                 let len = min(block.len(), self.params.layout().size());
                 Ok(NonNull::slice_from_raw_parts(NonNull::new_unchecked(block.as_mut_ptr()), len))
@@ -122,7 +125,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for UpTo<P, A> {
         old_layout: alloc::Layout, 
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
-        if self.manages_on_its_own(new_layout) {
+        if self.manages(new_layout) {
             if let Ok(block) = self.base.shrink(ptr, old_layout, new_layout) {
                 let len = min(block.len(), self.params.layout().size());
                 Ok(NonNull::slice_from_raw_parts(NonNull::new_unchecked(block.as_mut_ptr()), len))

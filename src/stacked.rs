@@ -107,7 +107,7 @@ pub fn with_buf<T>(
     unsafe { Stacked::with_params(RtParams::new_unchecked(buf_len), buf_ptr, f) }
 }
 
-unsafe impl<P: Params> Composable for Stacked<P> {
+unsafe impl<P: Params> Fallbackable for Stacked<P> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
         if let Some(offset) = (ptr.as_ptr() as usize).checked_sub(self.buf_ptr.as_ptr() as usize) {
             offset < self.params.buf_len() && self.buf_ptr.as_ptr().add(offset) == ptr.as_ptr()
@@ -116,8 +116,8 @@ unsafe impl<P: Params> Composable for Stacked<P> {
         }
     }
 
-    fn manages_on_its_own(&self, _layout: alloc::Layout) -> bool {
-        false
+    fn allows_fallback(&self, _layout: alloc::Layout) -> bool {
+        true
     }
 }
 

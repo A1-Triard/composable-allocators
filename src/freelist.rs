@@ -207,27 +207,27 @@ impl<P: Params, A: Allocator> Freelist<P, A> {
         Freelist { base, list: Cell::new(Node { next: None }), params }
     }
 
-    fn manage(&self, layout: alloc::Layout) -> bool {
+    fn manages(&self, layout: alloc::Layout) -> bool {
         (self.params.tolerance().size() ..= self.params.layout().size()).contains(&layout.size()) &&
         (self.params.tolerance().align() ..= self.params.layout().size()).contains(&layout.align())
     }
 }
 
-unsafe impl<P: Params, A: Composable> Composable for Freelist<P, A> {
+unsafe impl<P: Params, A: Fallbackable> Fallbackable for Freelist<P, A> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool {
-        let layout = if self.manage(layout) { self.params.layout() } else { layout };
+        let layout = if self.manages(layout) { self.params.layout() } else { layout };
         self.base.has_allocated(ptr, layout)
     }
 
-    fn manages_on_its_own(&self, layout: alloc::Layout) -> bool {
-        let layout = if self.manage(layout) { self.params.layout() } else { layout };
-        self.base.manages_on_its_own(layout)
+    fn allows_fallback(&self, layout: alloc::Layout) -> bool {
+        let layout = if self.manages(layout) { self.params.layout() } else { layout };
+        self.base.allows_fallback(layout)
     }
 }
 
 unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
-        if !self.manage(layout) {
+        if !self.manages(layout) {
             return self.base.allocate(layout);
         }
         if let Some(list) = self.list.get().next {
@@ -241,7 +241,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
-        if self.params.limit().limit_reached() || !self.manage(layout) {
+        if self.params.limit().limit_reached() || !self.manages(layout) {
             return self.base.deallocate(ptr, layout);
         }
         ptr::write(ptr.as_ptr() as *mut Node, self.list.get());
@@ -255,7 +255,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         old_layout: alloc::Layout, 
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
-        let old_layout = if self.manage(old_layout) { self.params.layout() } else { old_layout };
+        let old_layout = if self.manages(old_layout) { self.params.layout() } else { old_layout };
         self.base.grow(ptr, old_layout, new_layout)
     }
 
@@ -265,8 +265,8 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         old_layout: alloc::Layout, 
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
-        let old_layout = if self.manage(old_layout) {
-            if self.manage(new_layout) {
+        let old_layout = if self.manages(old_layout) {
+            if self.manages(new_layout) {
                 return Ok(NonNull::slice_from_raw_parts(ptr, self.params.layout().size()));
             }
             self.params.layout()
