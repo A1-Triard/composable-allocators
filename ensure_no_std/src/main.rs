@@ -45,13 +45,13 @@ pub fn rust_oom(_layout: Layout) -> ! {
 
 use alloc::vec::Vec;
 use composable_allocators::Global;
-use composable_allocators::or::Or;
+use composable_allocators::fallbacked::Fallbacked;
 use composable_allocators::stacked::{self};
 
 #[start]
 pub fn main(_argc: isize, _argv: *const *const u8) -> isize {
     stacked::with_size::<256, _>(|stacked| {
-        let mut vec = Vec::new_in(Or(stacked, Global));
+        let mut vec = Vec::new_in(Fallbacked(stacked, Global));
         [0u8, 1, 2, 3].iter().copied().collect_into(&mut vec);
     });
     0
