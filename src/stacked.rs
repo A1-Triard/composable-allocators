@@ -157,10 +157,12 @@ unsafe impl<P: Params> Allocator for Stacked<P> {
             self.buf_ptr.as_ptr().add(self.allocated.get())
         {
             self.allocated.set(self.allocated.get() - old_layout.size());
+            self.allocations_count.set(self.allocations_count.get() - 1);
             if let Ok(block) = self.allocate(new_layout) {
                 Ok(block)
             } else {
                 self.allocated.set(self.allocated.get() + old_layout.size());
+                self.allocations_count.set(self.allocations_count.get() + 1);
                 Err(AllocError)
             }
         } else {
@@ -179,10 +181,12 @@ unsafe impl<P: Params> Allocator for Stacked<P> {
             self.buf_ptr.as_ptr().add(self.allocated.get())
         {
             self.allocated.set(self.allocated.get() - old_layout.size());
+            self.allocations_count.set(self.allocations_count.get() - 1);
             if let Ok(block) = self.allocate(new_layout) {
                 Ok(block)
             } else {
                 self.allocated.set(self.allocated.get() + old_layout.size());
+                self.allocations_count.set(self.allocations_count.get() + 1);
                 Err(AllocError)
             }
         } else {
