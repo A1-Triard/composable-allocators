@@ -20,11 +20,24 @@ unsafe impl Allocator for Impossible {
         self.0
     }
 
+    fn allocate_zeroed(&self, _layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
+        self.0
+    }
+
     unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) {
         self.0
     }
 
     unsafe fn grow(
+        &self, 
+        _ptr: NonNull<u8>, 
+        _old_layout: alloc::Layout, 
+        _new_layout: alloc::Layout
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        self.0
+    }
+
+    unsafe fn grow_zeroed(
         &self, 
         _ptr: NonNull<u8>, 
         _old_layout: alloc::Layout, 

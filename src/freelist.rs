@@ -240,6 +240,22 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         }
     }
 
+    fn allocate_zeroed(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
+        if !self.manages(layout) {
+            return self.base.allocate_zeroed(layout);
+        }
+        if let Some(list) = self.list.get().next {
+            let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
+            self.list.set(Node { next });
+            unsafe { self.params.limit().dec_list_len(); }
+            let ptr = NonNull::slice_from_raw_parts(list, self.params.layout().size());
+            unsafe { ptr.as_mut_ptr().write_bytes(0, ptr.len()); }
+            Ok(ptr)
+        } else {
+            self.base.allocate_zeroed(self.params.layout())
+        }
+    }
+
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
         if self.params.limit().limit_reached() || !self.manages(layout) {
             return self.base.deallocate(ptr, layout);
@@ -257,6 +273,16 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
     ) -> Result<NonNull<[u8]>, AllocError> {
         let old_layout = if self.manages(old_layout) { self.params.layout() } else { old_layout };
         self.base.grow(ptr, old_layout, new_layout)
+    }
+
+    unsafe fn grow_zeroed(
+        &self, 
+        ptr: NonNull<u8>, 
+        old_layout: alloc::Layout, 
+        new_layout: alloc::Layout
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let old_layout = if self.manages(old_layout) { self.params.layout() } else { old_layout };
+        self.base.grow_zeroed(ptr, old_layout, new_layout)
     }
 
     unsafe fn shrink(
