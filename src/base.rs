@@ -39,3 +39,11 @@ unsafe impl<'a, T: Fallbackable> Fallbackable for &'a T {
         (*self).allows_fallback(layout)
     }
 }
+
+/// # Safety
+///
+/// Allocator implementing this trait should not panic with stack unwinding.
+/// This means, either it should not initiate panic directly or indirectly,
+/// either it should be strongly linked
+/// with the standard unstable `panic_abort` crate.
+pub unsafe trait NonUnwinding: Allocator { }

@@ -33,6 +33,9 @@ mod global;
 #[cfg(feature="global")]
 pub use global::*;
 
+mod as_global;
+pub use as_global::*;
+
 #[cfg(all(windows, feature="winapi"))]
 mod winapi;
 #[cfg(all(windows, feature="winapi"))]
