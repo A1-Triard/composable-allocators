@@ -30,7 +30,7 @@ pub unsafe trait Fallbackable: Allocator {
     fn allows_fallback(&self, layout: alloc::Layout) -> bool;
 }
 
-unsafe impl<'a, T: Fallbackable> Fallbackable for &'a T {
+unsafe impl<'a, T: Fallbackable + ?Sized> Fallbackable for &'a T {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool {
         (*self).has_allocated(ptr, layout)
     }
@@ -47,3 +47,5 @@ unsafe impl<'a, T: Fallbackable> Fallbackable for &'a T {
 /// either it should be strongly linked
 /// with the standard unstable `panic_abort` crate.
 pub unsafe trait NonUnwinding: Allocator { }
+
+unsafe impl<'a, T: NonUnwinding + ?Sized> NonUnwinding for &'a T { }

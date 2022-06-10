@@ -202,6 +202,8 @@ pub struct Freelist<P: Params, A: Allocator> {
     params: P,
 }
 
+unsafe impl<P: Params, A: NonUnwinding> NonUnwinding for Freelist<P, A> { }
+
 impl<P: Params, A: Allocator> Freelist<P, A> {
     pub fn new(params: P, base: A) -> Self {
         Freelist { base, list: Cell::new(Node { next: None }), params }

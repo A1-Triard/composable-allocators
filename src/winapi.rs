@@ -32,7 +32,7 @@ fn is_native_align(align: usize) -> bool {
 
 unsafe fn allocate(layout: alloc::Layout, flags: DWORD) -> Result<NonNull<[u8]>, AllocError> {
     assert!(MEMORY_ALLOCATION_ALIGNMENT >= size_of::<usize>());
-    let heap = non_null(GetProcessHeap()).unwrap();
+    let heap = non_null(GetProcessHeap()).map_err(|_| AllocError);
     let align = if !is_native_align(layout.align()) { layout.align() } else { 0 };
     let mut size = layout.size().checked_add(align).ok_or(AllocError)?;
     let p = non_null(HeapAlloc(heap.as_ptr(), flags, size)).map_err(|_| AllocError)?;
@@ -50,7 +50,7 @@ unsafe fn allocate(layout: alloc::Layout, flags: DWORD) -> Result<NonNull<[u8]>,
     Ok(NonNull::slice_from_raw_parts(NonNull::new_unchecked(p as *mut u8), size))
 }
 
-unsafe fn deallocate(ptr: NonNull<u8>, layout: alloc::Layout) {
+unsafe fn deallocate(ptr: NonNull<u8>, layout: alloc::Layout) -> Result<(), Errno> {
     let ptr = if !is_native_align(layout.align()) {
         let ptr = ptr.as_ptr().offset(-(MEMORY_ALLOCATION_ALIGNMENT as isize));
         let offset = ptr::read(ptr as *mut usize);
@@ -58,8 +58,9 @@ unsafe fn deallocate(ptr: NonNull<u8>, layout: alloc::Layout) {
     } else {
         ptr.as_ptr()
     };
-    let heap = non_null(GetProcessHeap()).unwrap();
-    non_zero(HeapFree(heap.as_ptr(), 0, ptr as _)).unwrap();
+    let heap = non_null(GetProcessHeap())?;
+    non_zero(HeapFree(heap.as_ptr(), 0, ptr as _))?;
+    Ok(())
 }
 
 unsafe fn realloc(
@@ -70,7 +71,7 @@ unsafe fn realloc(
     flags: DWORD
 ) -> Result<NonNull<[u8]>, AllocError> {
     if is_native_align(old_layout.align()) && is_native_align(new_layout.align()) {
-        let heap = non_null(GetProcessHeap()).unwrap();
+        let heap = non_null(GetProcessHeap()).map_err(|_| AllocError);
         let ptr = non_null(HeapReAlloc(heap.as_ptr(), flags, ptr.as_ptr() as _, new_layout.size()))
             .map_err(|_| AllocError)?;
         let ptr = NonNull::new_unchecked(ptr.as_ptr() as *mut u8);
@@ -83,6 +84,8 @@ unsafe fn realloc(
     }
 }
 
+unsafe impl NonUnwinding for WinApi { }
+
 unsafe impl Allocator for WinApi {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
         unsafe { allocate(layout, 0) }
@@ -93,7 +96,7 @@ unsafe impl Allocator for WinApi {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
-        deallocate(ptr, layout)
+        let _ = deallocate(ptr, layout);
     }
 
     unsafe fn grow(

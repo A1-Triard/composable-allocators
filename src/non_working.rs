@@ -6,6 +6,8 @@ use core::ptr::NonNull;
 #[derive(Debug, Copy, Clone)]
 pub struct NonWorking;
 
+unsafe impl NonUnwinding for NonWorking { }
+
 impl const Default for NonWorking {
     fn default() -> Self { NonWorking }
 }

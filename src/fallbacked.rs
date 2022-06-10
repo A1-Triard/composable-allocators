@@ -2,7 +2,12 @@ use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
 use core::ptr::{self, NonNull};
 
-pub struct Fallbacked<A: Allocator, Fallback: Allocator>(pub A, pub Fallback);
+pub struct Fallbacked<A: Fallbackable, Fallback: Allocator>(pub A, pub Fallback);
+
+unsafe impl<
+    A: NonUnwinding + Fallbackable,
+    Fallback: NonUnwinding
+> NonUnwinding for Fallbacked<A, Fallback> { }
 
 unsafe impl<A: Fallbackable, Fallback: Fallbackable> Fallbackable for Fallbacked<A, Fallback> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool {

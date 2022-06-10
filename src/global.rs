@@ -1,3 +1,4 @@
+use crate::base::*;
 use ::alloc::alloc::{self, AllocError, Allocator};
 use core::ptr::NonNull;
 
@@ -7,6 +8,8 @@ pub struct Global;
 impl const Default for Global {
     fn default() -> Self { Global }
 }
+
+unsafe impl NonUnwinding for Global { }
 
 unsafe impl Allocator for Global {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {

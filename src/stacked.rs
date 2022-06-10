@@ -66,6 +66,8 @@ impl<P: Params> Drop for Stacked<P> {
     }
 }
 
+unsafe impl<P: Params> NonUnwinding for Stacked<P> { }
+
 impl<P: Params> Stacked<P> {
     /// # Safety
     ///

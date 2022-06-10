@@ -5,6 +5,8 @@ use core::ptr::NonNull;
 #[derive(Copy, Clone)]
 pub struct Impossible(pub !);
 
+unsafe impl NonUnwinding for Impossible { }
+
 unsafe impl Fallbackable for Impossible {
     unsafe fn has_allocated(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
         self.0
