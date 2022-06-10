@@ -18,8 +18,9 @@ exclude = [
 ]
 
 [features]
-default = ["alloc"]
-alloc = []
+default = ["global", "winapi"]
+global = []
+winapi = []
 
 [badges]
 maintenance = { status = "experimental" }

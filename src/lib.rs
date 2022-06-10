@@ -18,7 +18,7 @@
 
 #![no_std]
 
-#[cfg(feature="alloc")]
+#[cfg(feature="global")]
 extern crate alloc;
 
 mod base;
@@ -28,19 +28,21 @@ pub mod fallbacked;
 
 pub mod limited_up_to;
 
-#[cfg(feature="alloc")]
+#[cfg(feature="global")]
 mod global;
-#[cfg(feature="alloc")]
+#[cfg(feature="global")]
 pub use global::*;
+
+#[cfg(all(windows, feature="winapi"))]
+mod winapi;
+#[cfg(all(windows, feature="winapi"))]
+pub use winapi::*;
 
 mod impossible;
 pub use impossible::*;
 
 mod non_working;
 pub use non_working::*;
-
-#[cfg(windows)]
-pub mod winapi;
 
 pub mod stacked;
 
