@@ -39,6 +39,9 @@ pub use impossible::*;
 mod non_working;
 pub use non_working::*;
 
+#[cfg(windows)]
+pub mod winapi;
+
 pub mod stacked;
 
 pub mod freelist;
