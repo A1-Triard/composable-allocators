@@ -1,3 +1,4 @@
+use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
 use core::mem::size_of;
 use core::ptr::{self, NonNull};
