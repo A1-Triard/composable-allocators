@@ -39,7 +39,7 @@ pub use as_global::*;
 #[cfg(all(windows, feature="winapi"))]
 mod winapi;
 #[cfg(all(windows, feature="winapi"))]
-pub use winapi::*;
+pub use crate::winapi::*;
 
 mod impossible;
 pub use impossible::*;

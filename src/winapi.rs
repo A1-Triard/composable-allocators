@@ -33,7 +33,7 @@ fn is_native_align(align: usize) -> bool {
 
 unsafe fn allocate(layout: alloc::Layout, flags: DWORD) -> Result<NonNull<[u8]>, AllocError> {
     assert!(MEMORY_ALLOCATION_ALIGNMENT >= size_of::<usize>());
-    let heap = non_null(GetProcessHeap()).map_err(|_| AllocError);
+    let heap = non_null(GetProcessHeap()).map_err(|_| AllocError)?;
     let align = if !is_native_align(layout.align()) { layout.align() } else { 0 };
     let mut size = layout.size().checked_add(align).ok_or(AllocError)?;
     let p = non_null(HeapAlloc(heap.as_ptr(), flags, size)).map_err(|_| AllocError)?;
@@ -72,7 +72,7 @@ unsafe fn realloc(
     flags: DWORD
 ) -> Result<NonNull<[u8]>, AllocError> {
     if is_native_align(old_layout.align()) && is_native_align(new_layout.align()) {
-        let heap = non_null(GetProcessHeap()).map_err(|_| AllocError);
+        let heap = non_null(GetProcessHeap()).map_err(|_| AllocError)?;
         let ptr = non_null(HeapReAlloc(heap.as_ptr(), flags, ptr.as_ptr() as _, new_layout.size()))
             .map_err(|_| AllocError)?;
         let ptr = NonNull::new_unchecked(ptr.as_ptr() as *mut u8);
@@ -80,7 +80,7 @@ unsafe fn realloc(
     } else {
         let new = allocate(new_layout, flags)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new.as_mut_ptr(), min_size);
-        deallocate(ptr, old_layout);
+        deallocate(ptr, old_layout).map_err(|_| AllocError)?;
         Ok(new)
     }
 }
@@ -125,5 +125,18 @@ unsafe impl Allocator for WinApi {
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
         realloc(ptr, old_layout, new_layout, new_layout.size(), 0)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::WinApi;
+    use core::alloc::{self, Allocator};
+
+    #[test]
+    fn allocate_zero_size() {
+        let layout = alloc::Layout::from_size_align(0, 1).unwrap();
+        let p = WinApi.allocate(layout).unwrap();
+        unsafe { WinApi.deallocate(p.as_non_null_ptr(), layout); }
     }
 }
