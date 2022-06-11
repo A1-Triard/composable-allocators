@@ -12,7 +12,6 @@ panic = "abort"
 
 [dependencies]
 composable-allocators = { path = ".." }
-libc_alloc = "1.0.3"
 
 [target.'cfg(not(windows))'.dependencies]
 libc = { version = "0.2", default-features = false }

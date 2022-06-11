@@ -14,7 +14,6 @@ use core::alloc::Layout;
 use core::panic::PanicInfo;
 #[cfg(not(windows))]
 use libc::exit;
-use libc_alloc::LibcAlloc;
 #[cfg(windows)]
 use winapi::shared::minwindef::UINT;
 #[cfg(windows)]
@@ -24,8 +23,10 @@ use winapi::um::processthreadsapi::ExitProcess;
 #[link(name="msvcrt")]
 extern { }
 
+use composable_allocators::{AsGlobal, System};
+
 #[global_allocator]
-static ALLOCATOR: LibcAlloc = LibcAlloc;
+static ALLOCATOR: AsGlobal<System> = AsGlobal(System);
 
 #[cfg(windows)]
 unsafe fn exit(code: UINT) -> ! {

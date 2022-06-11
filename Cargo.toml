@@ -18,10 +18,11 @@ exclude = [
 ]
 
 [features]
-default = ["global", "winapi", "posix"]
+default = ["global", "system"]
 global = []
 winapi = ["dep:winapi", "dep:errno-no-std"]
 posix = ["dep:libc"]
+system = ["dep:winapi", "dep:libc"]
 
 [badges]
 maintenance = { status = "experimental" }

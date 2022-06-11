@@ -38,15 +38,20 @@ pub use global::*;
 mod as_global;
 pub use as_global::*;
 
-#[cfg(all(windows, feature="winapi"))]
+#[cfg(all(windows, any(feature="winapi", feature="system")))]
 mod winapi;
 #[cfg(all(windows, feature="winapi"))]
 pub use crate::winapi::*;
 
-#[cfg(all(not(windows), feature="posix"))]
+#[cfg(all(not(windows), any(feature="posix", feature="system")))]
 mod posix;
 #[cfg(all(not(windows), feature="posix"))]
 pub use posix::*;
+
+#[cfg(feature="system")]
+mod system;
+#[cfg(feature="system")]
+pub use system::*;
 
 mod impossible;
 pub use impossible::*;
