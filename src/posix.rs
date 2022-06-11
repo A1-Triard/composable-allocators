@@ -12,11 +12,11 @@ impl const Default for Posix {
     fn default() -> Self { Posix }
 }
 
-fn zero(r: c_int) -> Result<(), c_int> {
+fn zero(r: c_int) -> Result<(), AllocError> {
     if r == 0 {
         Ok(())
     } else {
-        Err(r)
+        Err(AllocError)
     }
 }
 
@@ -29,7 +29,7 @@ unsafe impl Allocator for Posix {
         } else {
             let align = max(size_of::<usize>(), layout.align());
             let mut ptr = null_mut();
-            zero(unsafe { posix_memalign(&raw mut ptr, align, layout.size()) }).map_err(|_| AllocError)?;
+            zero(unsafe { posix_memalign(&raw mut ptr, align, layout.size()) })?;
             unsafe { NonNull::new_unchecked(ptr as *mut u8) }
         };
         Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
