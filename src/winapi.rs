@@ -1,6 +1,6 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
-use core::mem::size_of;
+use core::mem::{align_of, size_of};
 use core::ptr::{self, NonNull};
 use winapi::shared::minwindef::{BOOL, DWORD};
 use winapi::shared::ntdef::MEMORY_ALLOCATION_ALIGNMENT;
@@ -22,43 +22,43 @@ fn non_zero(r: BOOL) -> Result<BOOL, AllocError> {
     }
 }
 
-fn non_null<T: ?Sized>(p: *mut T) -> Result<NonNull<T>, AllocError> {
-    NonNull::new(p).ok_or(AllocError)
-}
-
 fn is_native_align(align: usize) -> bool {
     align <= MEMORY_ALLOCATION_ALIGNMENT
 }
 
 unsafe fn allocate(layout: alloc::Layout, flags: DWORD) -> Result<NonNull<[u8]>, AllocError> {
-    assert!(MEMORY_ALLOCATION_ALIGNMENT >= size_of::<usize>());
-    let heap = non_null(GetProcessHeap())?;
-    let align = if !is_native_align(layout.align()) { layout.align() } else { 0 };
-    let mut size = layout.size().checked_add(align).ok_or(AllocError)?;
-    let p = non_null(HeapAlloc(heap.as_ptr(), flags, size) as *mut u8)?;
-    let p = if align != 0 {
-        let mut p = p.as_ptr().add(MEMORY_ALLOCATION_ALIGNMENT);
-        size -= MEMORY_ALLOCATION_ALIGNMENT;
-        let offset = (layout.align() - (p as usize) % layout.align()) % layout.align();
-        p = p.add(offset);
-        size -= offset;
-        ptr::write(p.offset(-(MEMORY_ALLOCATION_ALIGNMENT as isize)) as *mut usize, offset);
-        p
+    if MEMORY_ALLOCATION_ALIGNMENT < size_of::<usize>() || align_of::<usize>() > size_of::<usize>() {
+        return Err(AllocError);
+    }
+    let heap = NonNull::new(GetProcessHeap()).ok_or(AllocError)?;
+    let (ptr, size) = if is_native_align(layout.align()) {
+        (
+            NonNull::new(HeapAlloc(heap.as_ptr(), flags, layout.size()) as *mut u8).ok_or(AllocError)?,
+            layout.size()
+        )
     } else {
-        p.as_ptr()
+        let mut size = layout.size().checked_add(layout.align()).ok_or(AllocError)?;
+        let mut ptr = NonNull::new(HeapAlloc(heap.as_ptr(), flags, size) as *mut u8).ok_or(AllocError)?;
+        ptr = NonNull::new_unchecked(ptr.as_ptr().add(size_of::<usize>()));
+        size -= size_of::<usize>();
+        let offset = (layout.align() - (ptr.as_ptr() as usize) % layout.align()) % layout.align();
+        ptr = NonNull::new_unchecked(ptr.as_ptr().add(offset));
+        size -= offset;
+        ptr::write(ptr.as_ptr().offset(-(size_of::<usize>() as isize)) as *mut usize, offset);
+        (ptr, size)
     };
-    Ok(NonNull::slice_from_raw_parts(NonNull::new_unchecked(p), size))
+    Ok(NonNull::slice_from_raw_parts(ptr, size))
 }
 
 unsafe fn deallocate(ptr: NonNull<u8>, layout: alloc::Layout) -> Result<(), AllocError> {
     let ptr = if !is_native_align(layout.align()) {
-        let ptr = ptr.as_ptr().offset(-(MEMORY_ALLOCATION_ALIGNMENT as isize));
+        let ptr = ptr.as_ptr().offset(-(size_of::<usize>() as isize));
         let offset = ptr::read(ptr as *mut usize);
         ptr.offset(-(offset as isize))
     } else {
         ptr.as_ptr()
     };
-    let heap = non_null(GetProcessHeap())?;
+    let heap = NonNull::new(GetProcessHeap()).ok_or(AllocError)?;
     non_zero(HeapFree(heap.as_ptr(), 0, ptr as _))?;
     Ok(())
 }
@@ -71,13 +71,14 @@ unsafe fn realloc(
     flags: DWORD
 ) -> Result<NonNull<[u8]>, AllocError> {
     if is_native_align(old_layout.align()) && is_native_align(new_layout.align()) {
-        let heap = non_null(GetProcessHeap())?;
-        let ptr = non_null(HeapReAlloc(heap.as_ptr(), flags, ptr.as_ptr() as _, new_layout.size()) as *mut u8)?;
+        let heap = NonNull::new(GetProcessHeap()).ok_or(AllocError)?;
+        let ptr = NonNull::new(HeapReAlloc(heap.as_ptr(), flags, ptr.as_ptr() as _, new_layout.size()) as *mut u8)
+            .ok_or(AllocError)?;
         Ok(NonNull::slice_from_raw_parts(ptr, new_layout.size()))
     } else {
         let new = allocate(new_layout, flags)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new.as_mut_ptr(), min_size);
-        deallocate(ptr, old_layout)?;
+        let _ = deallocate(ptr, old_layout);
         Ok(new)
     }
 }
