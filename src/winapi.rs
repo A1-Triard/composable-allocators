@@ -36,7 +36,7 @@ unsafe fn allocate(layout: alloc::Layout, flags: DWORD) -> Result<NonNull<[u8]>,
     let heap = non_null(GetProcessHeap()).map_err(|_| AllocError)?;
     let align = if !is_native_align(layout.align()) { layout.align() } else { 0 };
     let mut size = layout.size().checked_add(align).ok_or(AllocError)?;
-    let p = non_null(HeapAlloc(heap.as_ptr(), flags, size)).map_err(|_| AllocError)?;
+    let p = non_null(HeapAlloc(heap.as_ptr(), flags, size) as *mut u8).map_err(|_| AllocError)?;
     let p = if align != 0 {
         let mut p = p.as_ptr().add(MEMORY_ALLOCATION_ALIGNMENT);
         size -= MEMORY_ALLOCATION_ALIGNMENT;
@@ -48,7 +48,7 @@ unsafe fn allocate(layout: alloc::Layout, flags: DWORD) -> Result<NonNull<[u8]>,
     } else {
         p.as_ptr()
     };
-    Ok(NonNull::slice_from_raw_parts(NonNull::new_unchecked(p as *mut u8), size))
+    Ok(NonNull::slice_from_raw_parts(NonNull::new_unchecked(p), size))
 }
 
 unsafe fn deallocate(ptr: NonNull<u8>, layout: alloc::Layout) -> Result<(), Errno> {
@@ -73,9 +73,8 @@ unsafe fn realloc(
 ) -> Result<NonNull<[u8]>, AllocError> {
     if is_native_align(old_layout.align()) && is_native_align(new_layout.align()) {
         let heap = non_null(GetProcessHeap()).map_err(|_| AllocError)?;
-        let ptr = non_null(HeapReAlloc(heap.as_ptr(), flags, ptr.as_ptr() as _, new_layout.size()))
+        let ptr = non_null(HeapReAlloc(heap.as_ptr(), flags, ptr.as_ptr() as _, new_layout.size()) as *mut u8)
             .map_err(|_| AllocError)?;
-        let ptr = NonNull::new_unchecked(ptr.as_ptr() as *mut u8);
         Ok(NonNull::slice_from_raw_parts(ptr, new_layout.size()))
     } else {
         let new = allocate(new_layout, flags)?;

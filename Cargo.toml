@@ -18,13 +18,17 @@ exclude = [
 ]
 
 [features]
-default = ["global", "winapi"]
+default = ["global", "winapi", "posix"]
 global = []
-winapi = []
+winapi = ["dep:winapi", "dep:errno-no-std"]
+posix = ["dep:libc"]
 
 [badges]
 maintenance = { status = "experimental" }
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["heapapi", "minwindef", "ntdef"] }
-errno-no-std = { version = "0.1.2", default-features = false }
+winapi = { version = "0.3.9", features = ["heapapi", "minwindef", "ntdef"], optional = true }
+errno-no-std = { version = "0.1.2", default-features = false, optional = true }
+
+[target.'cfg(not(windows))'.dependencies]
+libc = { version = "0.2.126", default-features = false, optional = true }

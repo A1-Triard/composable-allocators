@@ -7,8 +7,10 @@
 #![feature(const_trait_impl)]
 #![feature(never_type)]
 #![feature(nonnull_slice_from_raw_parts)]
+#![feature(raw_ref_op)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
+#![feature(strict_provenance)]
 
 #![deny(warnings)]
 #![doc(test(attr(deny(warnings))))]
@@ -40,6 +42,11 @@ pub use as_global::*;
 mod winapi;
 #[cfg(all(windows, feature="winapi"))]
 pub use crate::winapi::*;
+
+#[cfg(all(not(windows), feature="posix"))]
+mod posix;
+#[cfg(all(not(windows), feature="posix"))]
+pub use posix::*;
 
 mod impossible;
 pub use impossible::*;
