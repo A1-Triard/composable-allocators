@@ -127,7 +127,7 @@ unsafe impl Allocator for WinApi {
 
 #[cfg(test)]
 mod test {
-    use crate::WinApi;
+    use crate::winapi::WinApi;
     use core::alloc::{self, Allocator};
 
     #[test]
