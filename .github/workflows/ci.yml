@@ -17,7 +17,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        features: ["", "--features=global", "--features=winapi", "--features=global,winapi"]
+        features:
+        - ""
+        - "--features=global"
+        - "--features=winapi"
+        - "--features=global,winapi"
+        - "--features=posix"
+        - "--features=global,posix"
+        - "--features=winapi,posix"
+        - "--features=global,winapi,posix"
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions-rs/toolchain@v1
