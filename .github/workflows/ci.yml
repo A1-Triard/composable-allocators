@@ -26,6 +26,14 @@ jobs:
         - "--features=global,posix"
         - "--features=winapi,posix"
         - "--features=global,winapi,posix"
+        - "--features=system"
+        - "--features=system,global"
+        - "--features=system,winapi"
+        - "--features=system,global,winapi"
+        - "--features=system,posix"
+        - "--features=system,global,posix"
+        - "--features=system,winapi,posix"
+        - "--features=system,global,winapi,posix"
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions-rs/toolchain@v1
