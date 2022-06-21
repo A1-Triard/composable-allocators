@@ -1,6 +1,5 @@
 #![feature(allocator_api)]
 #![feature(default_alloc_error_handler)]
-#![feature(explicit_generic_args_with_impl_trait)]
 #![feature(iter_collect_into)]
 #![feature(start)]
 
@@ -10,38 +9,22 @@
 
 extern crate alloc;
 
-use core::alloc::Layout;
-use core::panic::PanicInfo;
-#[cfg(not(windows))]
-use libc::exit;
-#[cfg(windows)]
-use winapi::shared::minwindef::UINT;
-#[cfg(windows)]
-use winapi::um::processthreadsapi::ExitProcess;
-
 #[cfg(windows)]
 #[link(name="msvcrt")]
 extern { }
 
-use composable_allocators::{AsGlobal, System};
+mod no_std {
+    use composable_allocators::{AsGlobal, System};
+    use core::panic::PanicInfo;
+    use exit_no_std::exit;
 
-#[global_allocator]
-static ALLOCATOR: AsGlobal<System> = AsGlobal(System);
+    #[global_allocator]
+    static ALLOCATOR: AsGlobal<System> = AsGlobal(System);
 
-#[cfg(windows)]
-unsafe fn exit(code: UINT) -> ! {
-    ExitProcess(code);
-    loop { }
-}
-
-#[panic_handler]
-pub extern fn panic(_info: &PanicInfo) -> ! {
-    unsafe { exit(99) }
-}
-
-#[no_mangle]
-pub fn rust_oom(_layout: Layout) -> ! {
-    unsafe { exit(98) }
+    #[panic_handler]
+    extern fn panic(_info: &PanicInfo) -> ! {
+        exit(99)
+    }
 }
 
 use alloc::vec::Vec;
