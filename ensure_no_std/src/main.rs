@@ -25,6 +25,12 @@ mod no_std {
     extern fn panic(_info: &PanicInfo) -> ! {
         exit(99)
     }
+
+    #[cfg(all(windows))]
+    #[no_mangle]
+    fn rust_oom(_layout: core::alloc::Layout) -> ! {
+        exit(98)
+    }
 }
 
 use alloc::vec::Vec;
