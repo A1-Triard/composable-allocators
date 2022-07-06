@@ -68,6 +68,32 @@ impl<P: Params> Drop for Stacked<P> {
 
 unsafe impl<P: Params> NonUnwinding for Stacked<P> { }
 
+impl Stacked<RtParams> {
+    pub fn from_static_slice(
+        buf: &'static mut [MaybeUninit<u8>],
+    ) -> Self {
+        Stacked {
+            buf_ptr: unsafe { NonNull::new_unchecked(buf.as_mut_ptr() as *mut u8) },
+            params: RtParams { buf_len: buf.len() },
+            allocated: Cell::new(0),
+            allocations_count: Cell::new(0),
+        }
+    }
+}
+
+impl<const BUF_LEN: usize> Stacked<CtParams<BUF_LEN>> {
+    pub fn from_static_array(
+        buf: &'static mut [MaybeUninit<u8>; BUF_LEN],
+    ) -> Self {
+        Stacked {
+            buf_ptr: unsafe { NonNull::new_unchecked(buf.as_mut_ptr() as *mut u8) },
+            params: CtParams(()),
+            allocated: Cell::new(0),
+            allocations_count: Cell::new(0),
+        }
+    }
+}
+
 impl<P: Params> Stacked<P> {
     /// # Safety
     ///

@@ -24,11 +24,11 @@ winapi = ["dep:winapi"]
 posix = ["dep:libc"]
 system = ["dep:winapi", "dep:libc"]
 
-[badges]
-maintenance = { status = "experimental" }
-
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["heapapi", "minwindef", "ntdef"], optional = true }
 
 [target.'cfg(not(windows))'.dependencies]
 libc = { version = "0.2.126", default-features = false, optional = true }
+
+[badges]
+maintenance = { status = "experimental" }
