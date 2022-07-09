@@ -34,6 +34,27 @@ jobs:
         - "--features=system,global,posix"
         - "--features=system,winapi,posix"
         - "--features=system,global,winapi,posix"
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+    - run: "rustup component add clippy"
+    - uses: actions/checkout@v2
+    - run: "cargo build --verbose --no-default-features ${{ matrix.features }}"
+    - run: "cargo test --verbose --tests --no-default-features ${{ matrix.features }}"
+    - run: "cargo test --verbose --doc --no-default-features ${{ matrix.features }}"
+    - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
+    - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
+    - run: "cargo outdated --verbose --aggresssive --root-deps-only --exit-code 1 ${{ matrix.features }}"
+    - run: "cargo clippy --verbose --no-default-features ${{ matrix.features }}"
+  logging:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        features:
         - "--features=logging"
         - "--features=logging,global"
         - "--features=logging,winapi"
@@ -59,8 +80,6 @@ jobs:
     - run: "rustup component add clippy"
     - uses: actions/checkout@v2
     - run: "cargo build --verbose --no-default-features ${{ matrix.features }}"
-    - run: "cargo test --verbose --tests --no-default-features ${{ matrix.features }}"
-    - run: "cargo test --verbose --doc --no-default-features ${{ matrix.features }}"
     - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
     - run: "cargo outdated --verbose --aggresssive --root-deps-only --exit-code 1 ${{ matrix.features }}"
