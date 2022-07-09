@@ -4,6 +4,7 @@
 //! Enabled by default. Disable to unlink `alloc` crate.
 
 #![feature(allocator_api)]
+#![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
 #![feature(never_type)]
 #![feature(nonnull_slice_from_raw_parts)]

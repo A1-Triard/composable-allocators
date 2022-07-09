@@ -39,11 +39,11 @@ impl RtParams {
     /// # Safety
     ///
     /// Argument should satisfy `buf_len <= isize::MAX as usize`.
-    pub unsafe fn new_unchecked(buf_len: usize) -> Self {
+    pub const unsafe fn new_unchecked(buf_len: usize) -> Self {
         RtParams { buf_len }
     }
 
-    pub fn new(buf_len: usize) -> Self {
+    pub const fn new(buf_len: usize) -> Self {
         assert!(buf_len <= isize::MAX as usize);
         unsafe { Self::new_unchecked(buf_len) }
     }
@@ -69,7 +69,7 @@ impl<P: Params> Drop for Stacked<P> {
 unsafe impl<P: Params> NonUnwinding for Stacked<P> { }
 
 impl Stacked<RtParams> {
-    pub fn from_static_slice(
+    pub const fn from_static_slice(
         buf: &'static mut [MaybeUninit<u8>],
     ) -> Self {
         Stacked {
@@ -82,7 +82,7 @@ impl Stacked<RtParams> {
 }
 
 impl<const BUF_LEN: usize> Stacked<CtParams<BUF_LEN>> {
-    pub fn from_static_array(
+    pub const fn from_static_array(
         buf: &'static mut [MaybeUninit<u8>; BUF_LEN],
     ) -> Self {
         Stacked {

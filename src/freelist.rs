@@ -170,11 +170,11 @@ impl<Limit: LimitParam> RtParams<Limit> {
     /// `tolerance.size() <= layout.size() && tolerance.align() <= layout.align()`,
     /// and
     /// `layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN`.
-    pub unsafe fn new_unchecked(layout: alloc::Layout, tolerance: alloc::Layout, limit: Limit) -> Self {
+    pub const unsafe fn new_unchecked(layout: alloc::Layout, tolerance: alloc::Layout, limit: Limit) -> Self {
         RtParams { layout, tolerance, limit }
     }
 
-    pub fn new(layout: alloc::Layout, tolerance: alloc::Layout, limit: Limit) -> Self {
+    pub const fn new(layout: alloc::Layout, tolerance: alloc::Layout, limit: Limit) -> Self {
         assert!(tolerance.size() <= layout.size() && tolerance.align() <= layout.align());
         assert!(layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN);
         unsafe { RtParams::new_unchecked(layout, tolerance, limit) }
@@ -205,7 +205,7 @@ pub struct Freelist<P: Params, A: Allocator> {
 unsafe impl<P: Params, A: NonUnwinding> NonUnwinding for Freelist<P, A> { }
 
 impl<P: Params, A: Allocator> Freelist<P, A> {
-    pub fn new(params: P, base: A) -> Self {
+    pub const fn new(params: P, base: A) -> Self {
         Freelist { base, list: Cell::new(Node { next: None }), params }
     }
 

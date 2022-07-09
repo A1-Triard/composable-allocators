@@ -65,7 +65,7 @@ pub struct LimitedUpTo<P: Params, A: Allocator> {
 unsafe impl<P: Params, A: NonUnwinding> NonUnwinding for LimitedUpTo<P, A> { }
 
 impl<P: Params, A: Allocator> LimitedUpTo<P, A> {
-    pub fn new(params: P, base: A) -> Self {
+    pub const fn new(params: P, base: A) -> Self {
         LimitedUpTo { params, base }
     }
 
