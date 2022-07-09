@@ -34,6 +34,22 @@ jobs:
         - "--features=system,global,posix"
         - "--features=system,winapi,posix"
         - "--features=system,global,winapi,posix"
+        - "--features=logging"
+        - "--features=logging,global"
+        - "--features=logging,winapi"
+        - "--features=logging,global,winapi"
+        - "--features=logging,posix"
+        - "--features=logging,global,posix"
+        - "--features=logging,winapi,posix"
+        - "--features=logging,global,winapi,posix"
+        - "--features=logging,system"
+        - "--features=logging,system,global"
+        - "--features=logging,system,winapi"
+        - "--features=logging,system,global,winapi"
+        - "--features=logging,system,posix"
+        - "--features=logging,system,global,posix"
+        - "--features=logging,system,winapi,posix"
+        - "--features=logging,system,global,winapi,posix"
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions-rs/toolchain@v1
