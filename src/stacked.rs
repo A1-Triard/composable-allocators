@@ -1,8 +1,8 @@
 use crate::base::*;
 use core::alloc::{self, AllocError, Allocator};
-use core::cell::Cell;
 use core::mem::{MaybeUninit, transmute};
 use core::ptr::NonNull;
+use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 /// # Safety
 ///
@@ -54,15 +54,15 @@ unsafe impl Params for RtParams {
 }
 
 pub struct Stacked<P: Params> {
-    buf_ptr: NonNull<u8>,
+    buf_ptr: AtomicPtr<u8>,
     params: P,
-    allocated: Cell<usize>,
-    allocations_count: Cell<usize>,
+    allocated: AtomicUsize,
+    allocations_count: AtomicUsize,
 }
 
 impl<P: Params> Drop for Stacked<P> {
     fn drop(&mut self) {
-        assert!(self.allocations_count.get() == 0, "memory leaks in Stacked allocator");
+        assert!(self.allocations_count.load(Ordering::Relaxed) == 0, "memory leaks in Stacked allocator");
     }
 }
 
@@ -73,10 +73,10 @@ impl Stacked<RtParams> {
         buf: &'static mut [MaybeUninit<u8>],
     ) -> Self {
         Stacked {
-            buf_ptr: unsafe { NonNull::new_unchecked(buf.as_mut_ptr() as *mut u8) },
+            buf_ptr: AtomicPtr::new(buf.as_mut_ptr() as *mut u8),
             params: RtParams { buf_len: buf.len() },
-            allocated: Cell::new(0),
-            allocations_count: Cell::new(0),
+            allocated: AtomicUsize::new(0),
+            allocations_count: AtomicUsize::new(0),
         }
     }
 }
@@ -86,10 +86,10 @@ impl<const BUF_LEN: usize> Stacked<CtParams<BUF_LEN>> {
         buf: &'static mut [MaybeUninit<u8>; BUF_LEN],
     ) -> Self {
         Stacked {
-            buf_ptr: unsafe { NonNull::new_unchecked(buf.as_mut_ptr() as *mut u8) },
+            buf_ptr: AtomicPtr::new(buf.as_mut_ptr() as *mut u8),
             params: CtParams(()),
-            allocated: Cell::new(0),
-            allocations_count: Cell::new(0),
+            allocated: AtomicUsize::new(0),
+            allocations_count: AtomicUsize::new(0),
         }
     }
 }
@@ -109,10 +109,30 @@ impl<P: Params> Stacked<P> {
         let stacked = Stacked {
             buf_ptr: transmute(buf_ptr),
             params,
-            allocated: Cell::new(0),
-            allocations_count: Cell::new(0),
+            allocated: AtomicUsize::new(0),
+            allocations_count: AtomicUsize::new(0),
         };
         f(&stacked)
+    }
+
+    unsafe fn grow_raw(
+        &self, 
+        ptr: NonNull<u8>, 
+        old_layout: alloc::Layout, 
+        new_layout: alloc::Layout,
+        zeroed: bool,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        if new_layout.align() > old_layout.align() { return Err(AllocError); }
+        let start_offset = ptr.as_ptr().offset_from(self.buf_ptr.load(Ordering::Relaxed)) as usize;
+        if new_layout.size() > self.params.buf_len() - start_offset { return Err(AllocError); }
+        let old_end_offset = start_offset + old_layout.size();
+        let new_end_offset = start_offset + new_layout.size();
+        self.allocated.compare_exchange(old_end_offset, new_end_offset, Ordering::Relaxed, Ordering::Relaxed)
+            .map_err(|_| AllocError)?;
+        if zeroed {
+            ptr.as_ptr().add(old_layout.size()).write_bytes(0, new_layout.size() - old_layout.size());
+        }
+        Ok(NonNull::slice_from_raw_parts(ptr, new_layout.size()))
     }
 }
 
@@ -137,8 +157,8 @@ pub fn with_buf<T>(
 
 unsafe impl<P: Params> Fallbackable for Stacked<P> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {
-        if let Some(offset) = (ptr.as_ptr() as usize).checked_sub(self.buf_ptr.as_ptr() as usize) {
-            offset < self.params.buf_len() && self.buf_ptr.as_ptr().add(offset) == ptr.as_ptr()
+        if let Some(offset) = (ptr.as_ptr() as usize).checked_sub(self.buf_ptr.load(Ordering::Relaxed) as usize) {
+            offset < self.params.buf_len() && self.buf_ptr.load(Ordering::Relaxed).add(offset) == ptr.as_ptr()
         } else {
             false
         }
@@ -151,27 +171,31 @@ unsafe impl<P: Params> Fallbackable for Stacked<P> {
 
 unsafe impl<P: Params> Allocator for Stacked<P> {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let ptr = unsafe { self.buf_ptr.as_ptr().add(self.allocated.get()) };
-        let padding = (layout.align() - (ptr as usize) % layout.align()) % layout.align();
-        let size = padding.checked_add(layout.size()).ok_or(AllocError)?;
-        if size > self.params.buf_len() - self.allocated.get() { return Err(AllocError); }
-        self.allocations_count.set(self.allocations_count.get().checked_add(1).ok_or(AllocError)?);
+        let mut padding = MaybeUninit::uninit();
+        let allocated = self.allocated.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |allocated| {
+            let ptr = unsafe { self.buf_ptr.load(Ordering::Relaxed).add(allocated) };
+            let padding = padding.write((layout.align() - (ptr as usize) % layout.align()) % layout.align());
+            let size = padding.checked_add(layout.size())?;
+            if size > self.params.buf_len() - allocated { return None; }
+            Some(allocated + size)
+        }).map_err(|_| AllocError)?;
+        let ptr = unsafe { self.buf_ptr.load(Ordering::Relaxed).add(allocated) };
+        let padding = unsafe { padding.assume_init() };
+        self.allocations_count.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |allocations_count|
+            allocations_count.checked_add(1)
+        ).map_err(|_| AllocError)?;
         let res = NonNull::slice_from_raw_parts(
             unsafe { NonNull::new_unchecked(ptr.add(padding)) },
             layout.size()
         );
-        self.allocated.set(self.allocated.get() + size);
         Ok(res)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
-        if
-            ptr.as_ptr().add(layout.size()) ==
-            self.buf_ptr.as_ptr().add(self.allocated.get())
-        {
-            self.allocated.set(self.allocated.get() - layout.size());
-        }
-        self.allocations_count.set(self.allocations_count.get() - 1);
+        let start_offset = ptr.as_ptr().offset_from(self.buf_ptr.load(Ordering::Relaxed)) as usize;
+        let end_offset = start_offset + layout.size();
+        let _ = self.allocated.compare_exchange(end_offset, start_offset, Ordering::Relaxed, Ordering::Relaxed);
+        self.allocations_count.fetch_sub(1, Ordering::Relaxed);
     }
 
     unsafe fn grow(
@@ -180,22 +204,16 @@ unsafe impl<P: Params> Allocator for Stacked<P> {
         old_layout: alloc::Layout, 
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
-        if
-            ptr.as_ptr().add(old_layout.size()) ==
-            self.buf_ptr.as_ptr().add(self.allocated.get())
-        {
-            self.allocated.set(self.allocated.get() - old_layout.size());
-            self.allocations_count.set(self.allocations_count.get() - 1);
-            if let Ok(block) = self.allocate(new_layout) {
-                Ok(block)
-            } else {
-                self.allocated.set(self.allocated.get() + old_layout.size());
-                self.allocations_count.set(self.allocations_count.get() + 1);
-                Err(AllocError)
-            }
-        } else {
-            Err(AllocError)
-        }
+        self.grow_raw(ptr, old_layout, new_layout, false)
+    }
+
+    unsafe fn grow_zeroed(
+        &self, 
+        ptr: NonNull<u8>, 
+        old_layout: alloc::Layout, 
+        new_layout: alloc::Layout
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        self.grow_raw(ptr, old_layout, new_layout, true)
     }
 
     unsafe fn shrink(
@@ -204,25 +222,14 @@ unsafe impl<P: Params> Allocator for Stacked<P> {
         old_layout: alloc::Layout, 
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
-        if
-            ptr.as_ptr().add(old_layout.size()) ==
-            self.buf_ptr.as_ptr().add(self.allocated.get())
-        {
-            self.allocated.set(self.allocated.get() - old_layout.size());
-            self.allocations_count.set(self.allocations_count.get() - 1);
-            if let Ok(block) = self.allocate(new_layout) {
-                Ok(block)
-            } else {
-                self.allocated.set(self.allocated.get() + old_layout.size());
-                self.allocations_count.set(self.allocations_count.get() + 1);
-                Err(AllocError)
-            }
-        } else {
-            if new_layout.align() > old_layout.align() {
-                Err(AllocError)
-            } else {
-                Ok(NonNull::slice_from_raw_parts(ptr, old_layout.size()))
-            }
-        }
+        if new_layout.align() > old_layout.align() { return Err(AllocError); }
+        let start_offset = ptr.as_ptr().offset_from(self.buf_ptr.load(Ordering::Relaxed)) as usize;
+        let old_end_offset = start_offset + old_layout.size();
+        let new_end_offset = start_offset + new_layout.size();
+        let size = match self.allocated.compare_exchange(old_end_offset, new_end_offset, Ordering::Relaxed, Ordering::Relaxed) {
+            Ok(_) => new_layout.size(),
+            Err(_) => old_layout.size(),
+        };
+        Ok(NonNull::slice_from_raw_parts(ptr, size))
     }
 }
