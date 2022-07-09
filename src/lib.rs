@@ -8,6 +8,7 @@
 #![feature(const_trait_impl)]
 #![feature(never_type)]
 #![feature(nonnull_slice_from_raw_parts)]
+#![cfg_attr(feature="logging", feature(panic_abort))]
 #![feature(raw_ref_op)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
@@ -19,7 +20,13 @@
 #![doc(test(attr(allow(unused_variables))))]
 #![allow(clippy::collapsible_else_if)]
 
-#![no_std]
+#![cfg_attr(not(feature="logging"), no_std)]
+
+#[cfg(feature="logging")]
+extern crate core;
+
+#[cfg(feature="logging")]
+extern crate panic_abort;
 
 #[cfg(feature="global")]
 extern crate alloc;
@@ -38,6 +45,11 @@ pub use global::*;
 
 mod as_global;
 pub use as_global::*;
+
+#[cfg(feature="logging")]
+mod logging;
+#[cfg(feature="logging")]
+pub use logging::*;
 
 #[cfg(all(not(target_os="dos"), windows, any(feature="winapi", feature="system")))]
 mod winapi;

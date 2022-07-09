@@ -23,6 +23,7 @@ global = []
 winapi = ["dep:winapi"]
 posix = ["dep:libc"]
 system = ["dep:winapi", "dep:libc"]
+logging = []
 
 [target.'cfg(all(not(target_os="dos"), windows))'.dependencies]
 winapi = { version = "0.3.9", features = ["heapapi", "minwindef", "ntdef"], optional = true }
