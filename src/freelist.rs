@@ -85,6 +85,7 @@ unsafe impl LimitParam for FixedRtLimit {
 /// `tolerance().size() <= layout().size() && tolerance().align() <= layout().align()`,
 /// and
 /// `layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN`.
+#[const_trait]
 pub unsafe trait Params {
     type Limit: LimitParam;
     fn layout(&self) -> alloc::Layout;

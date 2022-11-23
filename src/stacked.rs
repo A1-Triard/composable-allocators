@@ -10,6 +10,7 @@ use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 /// return constant value (i.e. same value on every call).
 ///
 /// Returning value should satisfy `buf_len() <= isize::MAX as usize`.
+#[const_trait]
 pub unsafe trait Params {
     fn buf_len(&self) -> usize;
 }

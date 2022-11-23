@@ -7,6 +7,7 @@ use core::ptr::NonNull;
 ///
 /// The ['layout`](Params::layout) method should return constant,
 /// i.e. same value on every call.
+#[const_trait]
 pub unsafe trait Params {
     fn layout(&self) -> alloc::Layout;
 }
