@@ -1,5 +1,4 @@
 #![feature(allocator_api)]
-#![feature(default_alloc_error_handler)]
 #![feature(iter_collect_into)]
 #![feature(start)]
 
