@@ -47,7 +47,7 @@ jobs:
     - run: "cargo test --verbose --doc --no-default-features ${{ matrix.features }}"
     - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
-    - run: "cargo outdated --verbose --aggresssive --root-deps-only --exit-code 1 ${{ matrix.features }}"
+    - run: "cargo outdated --verbose --root-deps-only --exit-code 1 ${{ matrix.features }}"
     - run: "cargo clippy --verbose --no-default-features ${{ matrix.features }}"
   logging:
     strategy:
@@ -82,7 +82,7 @@ jobs:
     - run: "cargo build --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
-    - run: "cargo outdated --verbose --aggresssive --root-deps-only --exit-code 1 ${{ matrix.features }}"
+    - run: "cargo outdated --verbose --root-deps-only --exit-code 1 ${{ matrix.features }}"
     - run: "cargo clippy --verbose --no-default-features ${{ matrix.features }}"
   ensure_no_std:
     strategy:
