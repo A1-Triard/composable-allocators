@@ -140,7 +140,7 @@ impl<P: Params> Stacked<P> {
 pub fn with_size<const BUF_LEN: usize, T>(
     f: impl for<'a> FnOnce(&'a Stacked<CtParams<BUF_LEN>>) -> T
 ) -> T {
-    let mut buf: [MaybeUninit<u8>; BUF_LEN] = unsafe { MaybeUninit::uninit().assume_init() };
+    let mut buf: [MaybeUninit<u8>; BUF_LEN] = MaybeUninit::uninit_array();
     let buf_ptr = unsafe { NonNull::new_unchecked(buf.as_mut_ptr()) };
     assert!((isize::MAX as usize) - BUF_LEN >= buf_ptr.as_ptr() as usize);
     unsafe { Stacked::with_params(CtParams::<BUF_LEN>::new(), buf_ptr, f) }
