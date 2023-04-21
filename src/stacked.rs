@@ -24,7 +24,7 @@ impl<const BUF_LEN: usize> CtParams<BUF_LEN> {
     }
 }
 
-impl<const BUF_LEN: usize> const Default for CtParams<BUF_LEN> {
+impl<const BUF_LEN: usize> Default for CtParams<BUF_LEN> {
     fn default() -> Self { Self::new() }
 }
 

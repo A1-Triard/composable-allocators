@@ -24,7 +24,7 @@ pub unsafe trait LimitParam {
 
 pub struct NoLimit;
 
-impl const Default for NoLimit {
+impl Default for NoLimit {
     fn default() -> Self { NoLimit }
 }
 
@@ -40,7 +40,7 @@ pub struct FixedCtLimit<const LIMIT: usize> {
     list_len: Cell<usize>,
 }
 
-impl<const LIMIT: usize> const Default for FixedCtLimit<LIMIT> {
+impl<const LIMIT: usize> Default for FixedCtLimit<LIMIT> {
     fn default() -> Self { FixedCtLimit { list_len: Cell::new(0) } }
 }
 
@@ -133,8 +133,8 @@ impl<
     const LAYOUT_ALIGN: usize,
     const TOLERANCE_SIZE: usize,
     const TOLERANCE_ALIGN: usize,
-    Limit: LimitParam + ~const Default,
-> const Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, Limit> {
+    Limit: LimitParam + Default,
+> Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, Limit> {
     fn default() -> Self { Self::new(Limit::default()) }
 }
 

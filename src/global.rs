@@ -5,7 +5,7 @@ use core::ptr::NonNull;
 #[derive(Debug, Copy, Clone)]
 pub struct Global;
 
-impl const Default for Global {
+impl Default for Global {
     fn default() -> Self { Global }
 }
 

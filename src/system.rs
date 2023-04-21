@@ -3,15 +3,15 @@ use core::alloc::{self, AllocError, Allocator};
 use core::ptr::NonNull;
 
 #[cfg(windows)]
-const IMPL: crate::winapi::WinApi = Default::default();
+const IMPL: crate::winapi::WinApi = crate::winapi::WinApi;
 
 #[cfg(not(windows))]
-const IMPL: crate::posix::Posix = Default::default();
+const IMPL: crate::posix::Posix = crate::posix::Posix;
 
 #[derive(Debug, Copy, Clone)]
 pub struct System;
 
-impl const Default for System {
+impl Default for System {
     fn default() -> Self { System }
 }
 

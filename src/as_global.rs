@@ -5,7 +5,7 @@ use core::ptr::{NonNull, null_mut};
 #[derive(Debug, Copy, Clone)]
 pub struct AsGlobal<A: NonUnwinding + ?Sized>(pub A);
 
-impl<A: NonUnwinding + ~const Default> const Default for AsGlobal<A> {
+impl<A: NonUnwinding + Default> Default for AsGlobal<A> {
     fn default() -> Self { AsGlobal(A::default()) }
 }
 

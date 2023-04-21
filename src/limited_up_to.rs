@@ -37,7 +37,7 @@ impl<
 impl<
     const LAYOUT_SIZE: usize,
     const LAYOUT_ALIGN: usize,
-> const Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN> {
+> Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN> {
     fn default() -> Self { CtParams::new() }
 }
 
