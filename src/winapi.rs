@@ -10,7 +10,7 @@ use winapi::um::winnt::HEAP_ZERO_MEMORY;
 #[derive(Debug, Copy, Clone)]
 pub struct WinApi;
 
-impl const Default for WinApi {
+impl Default for WinApi {
     fn default() -> Self { WinApi }
 }
 
