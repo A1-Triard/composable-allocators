@@ -5,8 +5,8 @@ use core::ptr::NonNull;
 #[derive(Debug, Copy, Clone)]
 pub struct Global;
 
-impl Default for Global {
-    fn default() -> Self { Global }
+impl const ConstDefault for Global {
+    fn default_const() -> Self { Global }
 }
 
 unsafe impl NonUnwinding for Global { }

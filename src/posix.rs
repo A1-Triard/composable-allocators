@@ -7,8 +7,8 @@ use libc::{c_int, free, malloc, posix_memalign, realloc};
 #[derive(Debug, Copy, Clone)]
 pub struct Posix;
 
-impl Default for Posix {
-    fn default() -> Self { Posix }
+impl const ConstDefault for Posix {
+    fn default_const() -> Self { Posix }
 }
 
 fn zero(r: c_int) -> Result<(), AllocError> {

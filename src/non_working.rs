@@ -8,8 +8,8 @@ pub struct NonWorking;
 
 unsafe impl NonUnwinding for NonWorking { }
 
-impl Default for NonWorking {
-    fn default() -> Self { NonWorking }
+impl const ConstDefault for NonWorking {
+    fn default_const() -> Self { NonWorking }
 }
 
 unsafe impl Fallbackable for NonWorking {

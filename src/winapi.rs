@@ -10,8 +10,8 @@ use winapi::um::winnt::HEAP_ZERO_MEMORY;
 #[derive(Debug, Copy, Clone)]
 pub struct WinApi;
 
-impl Default for WinApi {
-    fn default() -> Self { WinApi }
+impl const ConstDefault for WinApi {
+    fn default_const() -> Self { WinApi }
 }
 
 fn non_zero(r: BOOL) -> Result<BOOL, AllocError> {

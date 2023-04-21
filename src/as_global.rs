@@ -5,8 +5,8 @@ use core::ptr::{NonNull, null_mut};
 #[derive(Debug, Copy, Clone)]
 pub struct AsGlobal<A: NonUnwinding + ?Sized>(pub A);
 
-impl<A: NonUnwinding + Default> Default for AsGlobal<A> {
-    fn default() -> Self { AsGlobal(A::default()) }
+impl<A: NonUnwinding + ~const ConstDefault> const ConstDefault for AsGlobal<A> {
+    fn default_const() -> Self { AsGlobal(A::default_const()) }
 }
 
 unsafe impl<A: NonUnwinding + ?Sized> GlobalAlloc for AsGlobal<A> {

@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "composable-allocators"
-version = "0.2.5"
+version = "0.2.6"
 #rust-version = "nightly"
 authors = ["warlock <internalmike@gmail.com>"]
 description = "Composable memory allocators for new allocator API."

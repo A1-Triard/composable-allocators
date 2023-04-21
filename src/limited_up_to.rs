@@ -37,8 +37,8 @@ impl<
 impl<
     const LAYOUT_SIZE: usize,
     const LAYOUT_ALIGN: usize,
-> Default for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN> {
-    fn default() -> Self { CtParams::new() }
+> const ConstDefault for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN> {
+    fn default_const() -> Self { CtParams::new() }
 }
 
 unsafe impl<

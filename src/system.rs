@@ -11,8 +11,8 @@ const IMPL: crate::posix::Posix = crate::posix::Posix;
 #[derive(Debug, Copy, Clone)]
 pub struct System;
 
-impl Default for System {
-    fn default() -> Self { System }
+impl const ConstDefault for System {
+    fn default_const() -> Self { System }
 }
 
 unsafe impl NonUnwinding for System { }
