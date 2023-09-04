@@ -6,6 +6,7 @@
 #![feature(allocator_api)]
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
+#![feature(effects)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![cfg_attr(feature="logging", feature(panic_abort))]
