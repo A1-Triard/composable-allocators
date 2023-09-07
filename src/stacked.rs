@@ -99,7 +99,7 @@ impl<const BUF_LEN: usize> Stacked<CtParams<BUF_LEN>> {
 impl<P: Params> Stacked<P> {
     /// # Safety
     ///
-    /// `buf_ptr` should be a valid pointer to a slice with `params.buf_len()` bytes length.
+    /// `buf_ptr` should be a valid unique pointer to a slice with `params.buf_len()` bytes length.
     ///
     /// Arguments should satisfy
     /// `(isize::MAX as usize) - params.buf_len() >= buf_ptr as usize`
