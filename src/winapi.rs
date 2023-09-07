@@ -1,4 +1,5 @@
 use crate::base::*;
+use const_default_derive::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::mem::{align_of, size_of};
 use core::ptr::{self, NonNull};
@@ -7,12 +8,8 @@ use winapi::shared::ntdef::MEMORY_ALLOCATION_ALIGNMENT;
 use winapi::um::heapapi::{GetProcessHeap, HeapAlloc, HeapFree, HeapReAlloc};
 use winapi::um::winnt::HEAP_ZERO_MEMORY;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ConstDefault)]
 pub struct WinApi;
-
-impl const ConstDefault for WinApi {
-    fn default_const() -> Self { WinApi }
-}
 
 fn non_zero(r: BOOL) -> Result<BOOL, AllocError> {
     if r == 0 {
