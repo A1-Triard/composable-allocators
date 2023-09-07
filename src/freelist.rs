@@ -35,9 +35,9 @@ unsafe impl LimitParam for NoLimit {
 
     unsafe fn limit_reached(&self, (): Self::ListLen) -> bool { false }
 
-    unsafe fn dec_list_len(&self, (): Self::ListLen) { () }
+    unsafe fn dec_list_len(&self, (): Self::ListLen) -> Self::ListLen { }
 
-    unsafe fn inc_list_len(&self, (): Self::ListLen) { () }
+    unsafe fn inc_list_len(&self, (): Self::ListLen) -> Self::ListLen { }
 }
 
 #[doc(hidden)]
