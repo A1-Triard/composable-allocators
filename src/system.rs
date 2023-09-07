@@ -1,4 +1,5 @@
 use crate::base::*;
+use const_default_derive::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::ptr::NonNull;
 
@@ -8,12 +9,8 @@ const IMPL: crate::winapi::WinApi = crate::winapi::WinApi;
 #[cfg(not(windows))]
 const IMPL: crate::posix::Posix = crate::posix::Posix;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ConstDefault)]
 pub struct System;
-
-impl const ConstDefault for System {
-    fn default_const() -> Self { System }
-}
 
 unsafe impl NonUnwinding for System { }
 

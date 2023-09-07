@@ -1,11 +1,6 @@
 use core::alloc::{self, Allocator};
 use core::ptr::NonNull;
 
-#[const_trait]
-pub trait ConstDefault {
-    fn default_const() -> Self;
-}
-
 /// # Safety
 ///
 /// The [`allows_fallback`](Fallbackable::allows_fallback) function should be pure, i.e. always return same value

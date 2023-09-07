@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "composable-allocators"
-version = "0.2.7"
+version = "0.2.8"
 #rust-version = "nightly"
 authors = ["warlock <internalmike@gmail.com>"]
 description = "Composable memory allocators for new allocator API."
@@ -36,3 +36,7 @@ libc = { version = "0.2.126", default-features = false, optional = true }
 
 [badges]
 maintenance = { status = "experimental" }
+
+[dependencies]
+const-default = "1.0.0"
+const-default-derive = "0.2.0"

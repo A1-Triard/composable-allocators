@@ -1,4 +1,6 @@
 use crate::base::*;
+use const_default::ConstDefault;
+use const_default_derive::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::cell::Cell;
 use core::mem::{align_of, size_of};
@@ -13,67 +15,71 @@ pub const MIN_LAYOUT_ALIGN: usize = align_of::<Node>();
 /// This trait cannot be implemented outside of this module.
 pub unsafe trait LimitParam {
     #[doc(hidden)]
-    unsafe fn limit_reached(&self) -> bool;
+    type ListLen: ConstDefault + Copy;
 
     #[doc(hidden)]
-    unsafe fn dec_list_len(&self);
+    unsafe fn limit_reached(&self, list_len: Self::ListLen) -> bool;
 
     #[doc(hidden)]
-    unsafe fn inc_list_len(&self);
+    unsafe fn dec_list_len(&self, list_len: Self::ListLen) -> Self::ListLen;
+
+    #[doc(hidden)]
+    unsafe fn inc_list_len(&self, list_len: Self::ListLen) -> Self::ListLen;
 }
 
+#[derive(ConstDefault)]
 pub struct NoLimit;
 
-impl const ConstDefault for NoLimit {
-    fn default_const() -> Self { NoLimit }
-}
-
 unsafe impl LimitParam for NoLimit {
-    unsafe fn limit_reached(&self) -> bool { false }
+    type ListLen = ();
 
-    unsafe fn dec_list_len(&self) { }
+    unsafe fn limit_reached(&self, (): Self::ListLen) -> bool { false }
 
-    unsafe fn inc_list_len(&self) { }
+    unsafe fn dec_list_len(&self, (): Self::ListLen) { () }
+
+    unsafe fn inc_list_len(&self, (): Self::ListLen) { () }
 }
 
-pub struct FixedCtLimit<const LIMIT: usize> {
-    list_len: Cell<usize>,
-}
+#[doc(hidden)]
+#[derive(ConstDefault, Clone, Copy)]
+pub struct FixedLimitListLen(usize);
 
-impl<const LIMIT: usize> const ConstDefault for FixedCtLimit<LIMIT> {
-    fn default_const() -> Self { FixedCtLimit { list_len: Cell::new(0) } }
-}
+#[derive(ConstDefault)]
+pub struct FixedCtLimit<const LIMIT: usize>;
 
 unsafe impl<const LIMIT: usize> LimitParam for FixedCtLimit<LIMIT> {
-    unsafe fn limit_reached(&self) -> bool {
-        self.list_len.get() == LIMIT
+    type ListLen = FixedLimitListLen;
+
+    unsafe fn limit_reached(&self, list_len: Self::ListLen) -> bool {
+        list_len.0 == LIMIT
     }
 
-    unsafe fn dec_list_len(&self) {
-        self.list_len.set(self.list_len.get() - 1);
+    unsafe fn dec_list_len(&self, list_len: Self::ListLen) -> Self::ListLen {
+        FixedLimitListLen(list_len.0 - 1)
     }
 
-    unsafe fn inc_list_len(&self) {
-        self.list_len.set(self.list_len.get() + 1);
+    unsafe fn inc_list_len(&self, list_len: Self::ListLen) -> Self::ListLen {
+        FixedLimitListLen(list_len.0 + 1)
     }
 }
 
 pub struct FixedRtLimit {
     limit: usize,
-    list_len: Cell<usize>,
 }
 
 unsafe impl LimitParam for FixedRtLimit {
-    unsafe fn limit_reached(&self) -> bool {
-        self.list_len.get() == self.limit
+    type ListLen = FixedLimitListLen;
+
+    unsafe fn limit_reached(&self, list_len: Self::ListLen) -> bool {
+        list_len.0 == self.limit
     }
 
-    unsafe fn dec_list_len(&self) {
-        self.list_len.set(self.list_len.get() - 1);
+    unsafe fn dec_list_len(&self, list_len: Self::ListLen) -> Self::ListLen {
+        FixedLimitListLen(list_len.0 - 1)
     }
 
-    unsafe fn inc_list_len(&self) {
-        self.list_len.set(self.list_len.get() + 1);
+    unsafe fn inc_list_len(&self, list_len: Self::ListLen) -> Self::ListLen {
+        FixedLimitListLen(list_len.0 + 1)
     }
 }
 
@@ -133,9 +139,9 @@ impl<
     const LAYOUT_ALIGN: usize,
     const TOLERANCE_SIZE: usize,
     const TOLERANCE_ALIGN: usize,
-    Limit: LimitParam + ~const ConstDefault,
-> const ConstDefault for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, Limit> {
-    fn default_const() -> Self { Self::new(Limit::default_const()) }
+    Limit: LimitParam + ConstDefault,
+> ConstDefault for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN, TOLERANCE_SIZE, TOLERANCE_ALIGN, Limit> {
+    const DEFAULT: Self = Self::new(Limit::DEFAULT);
 }
 
 unsafe impl<
@@ -200,6 +206,7 @@ struct Node {
 pub struct Freelist<P: Params, A: Allocator> {
     base: A,
     list: Cell<Node>,
+    list_len: Cell<<P::Limit as LimitParam>::ListLen>,
     params: P,
 }
 
@@ -207,7 +214,7 @@ unsafe impl<P: Params, A: NonUnwinding> NonUnwinding for Freelist<P, A> { }
 
 impl<P: Params, A: Allocator> Freelist<P, A> {
     pub const fn new(params: P, base: A) -> Self {
-        Freelist { base, list: Cell::new(Node { next: None }), params }
+        Freelist { base, list: Cell::new(Node { next: None }), list_len: Cell::new(ConstDefault::DEFAULT), params }
     }
 
     fn manages(&self, layout: alloc::Layout) -> bool {
@@ -236,7 +243,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         if let Some(list) = self.list.get().next {
             let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
             self.list.set(Node { next });
-            unsafe { self.params.limit().dec_list_len(); }
+            self.list_len.set(unsafe { self.params.limit().dec_list_len(self.list_len.get()) });
             Ok(NonNull::slice_from_raw_parts(list, self.params.layout().size()))
         } else {
             self.base.allocate(self.params.layout())
@@ -250,7 +257,7 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
         if let Some(list) = self.list.get().next {
             let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
             self.list.set(Node { next });
-            unsafe { self.params.limit().dec_list_len(); }
+            self.list_len.set(unsafe { self.params.limit().dec_list_len(self.list_len.get()) });
             let ptr = NonNull::slice_from_raw_parts(list, self.params.layout().size());
             unsafe { ptr.as_mut_ptr().write_bytes(0, ptr.len()); }
             Ok(ptr)
@@ -260,12 +267,12 @@ unsafe impl<P: Params, A: Allocator> Allocator for Freelist<P, A> {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
-        if self.params.limit().limit_reached() || !self.manages(layout) {
+        if self.params.limit().limit_reached(self.list_len.get()) || !self.manages(layout) {
             return self.base.deallocate(ptr, layout);
         }
         ptr::write(ptr.as_ptr() as *mut Node, self.list.get());
         self.list.set(Node { next: Some(ptr) });
-        self.params.limit().inc_list_len();
+        self.list_len.set(unsafe { self.params.limit().inc_list_len(self.list_len.get()) });
     }
 
     unsafe fn grow(

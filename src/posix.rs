@@ -1,15 +1,12 @@
 use crate::base::*;
+use const_default_derive::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::mem::size_of;
 use core::ptr::{self, NonNull, null_mut};
 use libc::{c_int, free, malloc, posix_memalign, realloc};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ConstDefault)]
 pub struct Posix;
-
-impl const ConstDefault for Posix {
-    fn default_const() -> Self { Posix }
-}
 
 fn zero(r: c_int) -> Result<(), AllocError> {
     if r == 0 {

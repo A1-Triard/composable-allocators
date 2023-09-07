@@ -1,16 +1,13 @@
 use crate::base::*;
+use const_default_derive::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::hint::unreachable_unchecked;
 use core::ptr::NonNull;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ConstDefault)]
 pub struct NonWorking;
 
 unsafe impl NonUnwinding for NonWorking { }
-
-impl const ConstDefault for NonWorking {
-    fn default_const() -> Self { NonWorking }
-}
 
 unsafe impl Fallbackable for NonWorking {
     unsafe fn has_allocated(&self, _ptr: NonNull<u8>, _layout: alloc::Layout) -> bool {

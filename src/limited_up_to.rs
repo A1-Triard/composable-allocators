@@ -1,4 +1,5 @@
 use crate::base::*;
+use const_default::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::cmp::min;
 use core::ptr::NonNull;
@@ -37,8 +38,8 @@ impl<
 impl<
     const LAYOUT_SIZE: usize,
     const LAYOUT_ALIGN: usize,
-> const ConstDefault for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN> {
-    fn default_const() -> Self { CtParams::new() }
+> ConstDefault for CtParams<LAYOUT_SIZE, LAYOUT_ALIGN> {
+    const DEFAULT: Self = CtParams::new();
 }
 
 unsafe impl<

@@ -1,4 +1,5 @@
 use crate::base::*;
+use const_default::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
 use core::mem::{MaybeUninit, transmute};
 use core::ptr::NonNull;
@@ -24,8 +25,8 @@ impl<const BUF_LEN: usize> CtParams<BUF_LEN> {
     }
 }
 
-impl<const BUF_LEN: usize> const ConstDefault for CtParams<BUF_LEN> {
-    fn default_const() -> Self { Self::new() }
+impl<const BUF_LEN: usize> ConstDefault for CtParams<BUF_LEN> {
+    const DEFAULT: Self = Self::new();
 }
 
 unsafe impl<const BUF_LEN: usize> const Params for CtParams<BUF_LEN> {

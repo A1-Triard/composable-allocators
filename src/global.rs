@@ -1,13 +1,10 @@
 use crate::base::*;
 use ::alloc::alloc::{self, AllocError, Allocator};
+use const_default_derive::ConstDefault;
 use core::ptr::NonNull;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ConstDefault)]
 pub struct Global;
-
-impl const ConstDefault for Global {
-    fn default_const() -> Self { Global }
-}
 
 unsafe impl NonUnwinding for Global { }
 
