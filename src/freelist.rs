@@ -18,12 +18,15 @@ pub unsafe trait LimitParam {
     type ListLen: ConstDefault + Copy;
 
     #[doc(hidden)]
+    #[allow(clippy::missing_safety_doc)]
     unsafe fn limit_reached(&self, list_len: Self::ListLen) -> bool;
 
     #[doc(hidden)]
+    #[allow(clippy::missing_safety_doc)]
     unsafe fn dec_list_len(&self, list_len: Self::ListLen) -> Self::ListLen;
 
     #[doc(hidden)]
+    #[allow(clippy::missing_safety_doc)]
     unsafe fn inc_list_len(&self, list_len: Self::ListLen) -> Self::ListLen;
 }
 
