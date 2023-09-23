@@ -21,14 +21,8 @@ mod no_std {
     static ALLOCATOR: AsGlobal<System> = AsGlobal(System);
 
     #[panic_handler]
-    extern fn panic(_info: &PanicInfo) -> ! {
+    fn panic(_info: &PanicInfo) -> ! {
         exit(99)
-    }
-
-    #[cfg(all(windows))]
-    #[no_mangle]
-    fn rust_oom(_layout: core::alloc::Layout) -> ! {
-        exit(98)
     }
 }
 
