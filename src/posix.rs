@@ -25,7 +25,7 @@ unsafe impl NonUnwinding for Posix { }
 unsafe impl Allocator for Posix {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = if layout.size() == 0 {
-            unsafe { NonNull::new_unchecked(ptr::invalid_mut(layout.align())) }
+            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(layout.align())) }
         } else if !is_native_align(layout.align()) {
             let mut ptr = null_mut();
             zero(unsafe { posix_memalign(&raw mut ptr, layout.align(), layout.size()) })?;
