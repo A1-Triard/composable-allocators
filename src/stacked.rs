@@ -1,7 +1,7 @@
 use crate::base::*;
 use const_default::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
-use core::mem::{MaybeUninit, transmute};
+use core::mem::{MaybeUninit};
 use core::ptr::NonNull;
 use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
@@ -109,7 +109,7 @@ impl<P: Params> Stacked<P> {
         f: impl for<'a> FnOnce(&'a Stacked<P>) -> T
     ) -> T {
         let stacked = Stacked {
-            buf_ptr: transmute(buf_ptr),
+            buf_ptr: AtomicPtr::new(buf_ptr.as_ptr() as *mut u8),
             params,
             allocated: AtomicUsize::new(0),
             allocations_count: AtomicUsize::new(0),
