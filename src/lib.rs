@@ -1,18 +1,10 @@
-//! **Crate features**
-//!
-//! * `"alloc"`
-//! Enabled by default. Disable to unlink `alloc` crate.
-
 #![feature(allocator_api)]
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
-#![feature(effects)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![cfg_attr(feature="logging", feature(panic_abort))]
-#![feature(raw_ref_op)]
 #![feature(slice_ptr_get)]
-#![feature(slice_ptr_len)]
 #![feature(strict_provenance)]
 
 #![deny(warnings)]
