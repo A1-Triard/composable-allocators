@@ -17,23 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        features:
-        - ""
-        - "--features=global"
-        - "--features=winapi"
-        - "--features=global,winapi"
-        - "--features=posix"
-        - "--features=global,posix"
-        - "--features=winapi,posix"
-        - "--features=global,winapi,posix"
-        - "--features=system"
-        - "--features=system,global"
-        - "--features=system,winapi"
-        - "--features=system,global,winapi"
-        - "--features=system,posix"
-        - "--features=system,global,posix"
-        - "--features=system,winapi,posix"
-        - "--features=system,global,winapi,posix"
+        features: ["", "--features=global", "--features=logging", "--features=logging,global"]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions-rs/toolchain@v1
@@ -45,41 +29,6 @@ jobs:
     - run: "cargo build --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo test --verbose --tests --no-default-features ${{ matrix.features }}"
     - run: "cargo test --verbose --doc --no-default-features ${{ matrix.features }}"
-    - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
-    - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
-    - run: "cargo outdated --verbose --root-deps-only --exit-code 1 ${{ matrix.features }}"
-    - run: "cargo clippy --verbose --no-default-features ${{ matrix.features }}"
-  logging:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        features:
-        - "--features=logging"
-        - "--features=logging,global"
-        - "--features=logging,winapi"
-        - "--features=logging,global,winapi"
-        - "--features=logging,posix"
-        - "--features=logging,global,posix"
-        - "--features=logging,winapi,posix"
-        - "--features=logging,global,winapi,posix"
-        - "--features=logging,system"
-        - "--features=logging,system,global"
-        - "--features=logging,system,winapi"
-        - "--features=logging,system,global,winapi"
-        - "--features=logging,system,posix"
-        - "--features=logging,system,global,posix"
-        - "--features=logging,system,winapi,posix"
-        - "--features=logging,system,global,winapi,posix"
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        override: true
-    - run: "rustup component add clippy"
-    - uses: actions/checkout@v2
-    - run: "cargo build --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
     - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
     - run: "cargo outdated --verbose --root-deps-only --exit-code 1 ${{ matrix.features }}"

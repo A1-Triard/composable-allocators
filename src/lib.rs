@@ -44,19 +44,16 @@ mod logging;
 #[cfg(feature="logging")]
 pub use logging::*;
 
-#[cfg(all(not(target_os="dos"), windows, any(feature="winapi", feature="system")))]
+#[cfg(all(not(target_os="dos"), windows))]
 mod winapi;
-#[cfg(all(not(target_os="dos"), windows, feature="winapi"))]
-pub use crate::winapi::*;
 
-#[cfg(all(not(target_os="dos"), not(windows), any(feature="posix", feature="system")))]
+#[cfg(all(not(target_os="dos"), not(windows)))]
 mod posix;
-#[cfg(all(not(target_os="dos"), not(windows), feature="posix"))]
-pub use posix::*;
 
-#[cfg(all(not(target_os="dos"), feature="system"))]
+#[cfg(not(target_os="dos"))]
 mod system;
-#[cfg(all(not(target_os="dos"), feature="system"))]
+
+#[cfg(not(target_os="dos"))]
 pub use system::*;
 
 mod impossible;

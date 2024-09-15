@@ -18,21 +18,18 @@ exclude = [
 ]
 
 [features]
-default = ["global", "system"]
+default = ["global"]
 global = []
-winapi = ["dep:winapi"]
-posix = ["dep:libc"]
-system = ["dep:winapi", "dep:libc"]
 logging = []
 
 [package.metadata.docs.rs]
 features = ["logging"]
 
 [target.'cfg(all(not(target_os="dos"), windows))'.dependencies]
-winapi = { version = "0.3.9", features = ["heapapi", "minwindef", "ntdef"], optional = true }
+winapi = { version = "0.3.9", features = ["heapapi", "minwindef", "ntdef"] }
 
 [target.'cfg(all(not(target_os="dos"), not(windows)))'.dependencies]
-libc = { version = "0.2.126", default-features = false, optional = true }
+libc = { version = "0.2.126", default-features = false }
 
 [badges]
 maintenance = { status = "experimental" }
