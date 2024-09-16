@@ -2,9 +2,10 @@ use crate::base::*;
 use const_default::ConstDefault;
 use const_default_derive::ConstDefault;
 use core::alloc::{self, AllocError, Allocator};
-use core::cell::Cell;
 use core::mem::{align_of, size_of};
-use core::ptr::{self, NonNull};
+use core::ptr::{self, NonNull, null_mut};
+use core::sync::atomic::AtomicPtr;
+use sync_no_std::mutex::Mutex;
 
 pub const MIN_LAYOUT_SIZE: usize = size_of::<Node>();
 
@@ -47,30 +48,11 @@ unsafe impl LimitParam for NoLimit {
 #[derive(ConstDefault, Clone, Copy)]
 pub struct FixedLimitListLen(usize);
 
-#[derive(ConstDefault)]
-pub struct FixedCtLimit<const LIMIT: usize>;
-
-unsafe impl<const LIMIT: usize> LimitParam for FixedCtLimit<LIMIT> {
-    type ListLen = FixedLimitListLen;
-
-    unsafe fn limit_reached(&self, list_len: Self::ListLen) -> bool {
-        list_len.0 == LIMIT
-    }
-
-    unsafe fn dec_list_len(&self, list_len: Self::ListLen) -> Self::ListLen {
-        FixedLimitListLen(list_len.0 - 1)
-    }
-
-    unsafe fn inc_list_len(&self, list_len: Self::ListLen) -> Self::ListLen {
-        FixedLimitListLen(list_len.0 + 1)
-    }
-}
-
-pub struct FixedRtLimit {
+pub struct FixedLimit {
     limit: usize,
 }
 
-unsafe impl LimitParam for FixedRtLimit {
+unsafe impl LimitParam for FixedLimit {
     type ListLen = FixedLimitListLen;
 
     unsafe fn limit_reached(&self, list_len: Self::ListLen) -> bool {
@@ -86,23 +68,25 @@ unsafe impl LimitParam for FixedRtLimit {
     }
 }
 
-#[derive(Clone, Copy)]
 struct Node {
-    next: Option<NonNull<u8>>,
+    next: AtomicPtr<u8>,
 }
 
-pub struct Freelist<Limit: LimitParam, A: Allocator> {
-    base: A,
-    list: Cell<Node>,
-    list_len: Cell<<Limit as LimitParam>::ListLen>,
+struct List<Limit: LimitParam> {
+    head: Node,
+    len: <Limit as LimitParam>::ListLen,
+}
+
+pub struct Freelist<Limit: LimitParam, A: Allocator + Clone> {
+    list: Mutex<List<Limit>, A>,
     layout: alloc::Layout,
     tolerance: alloc::Layout,
     limit: Limit,
 }
 
-unsafe impl<Limit: LimitParam, A: NonUnwinding> NonUnwinding for Freelist<Limit, A> { }
+unsafe impl<Limit: LimitParam, A: NonUnwinding + Clone> NonUnwinding for Freelist<Limit, A> { }
 
-impl<Limit: LimitParam, A: Allocator> Freelist<Limit, A> {
+impl<Limit: LimitParam, A: Allocator + Clone> Freelist<Limit, A> {
     pub const fn new(layout: alloc::Layout, tolerance: alloc::Layout, limit: Limit, base: A) -> Self {
         assert!(tolerance.size() <= layout.size() && tolerance.align() <= layout.align());
         assert!(layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN);
@@ -117,9 +101,10 @@ impl<Limit: LimitParam, A: Allocator> Freelist<Limit, A> {
     /// `layout.size() >= MIN_LAYOUT_SIZE && layout.align() >= MIN_LAYOUT_ALIGN`.
     pub const unsafe fn new_unchecked(layout: alloc::Layout, tolerance: alloc::Layout, limit: Limit, base: A) -> Self {
         Freelist {
-            base,
-            list: Cell::new(Node { next: None }),
-            list_len: Cell::new(ConstDefault::DEFAULT),
+            list: Mutex::new_in(List {
+                head: Node { next: AtomicPtr::new(null_mut()) },
+                len: ConstDefault::DEFAULT,
+            }, base),
             layout,
             tolerance,
             limit,
@@ -130,58 +115,63 @@ impl<Limit: LimitParam, A: Allocator> Freelist<Limit, A> {
         (self.tolerance.size() ..= self.layout.size()).contains(&layout.size()) &&
         (self.tolerance.align() ..= self.layout.size()).contains(&layout.align())
     }
+
+    fn base(&self) -> &A { self.list.allocator() }
 }
 
-unsafe impl<Limit: LimitParam, A: Fallbackable> Fallbackable for Freelist<Limit, A> {
+unsafe impl<Limit: LimitParam, A: Fallbackable + Clone> Fallbackable for Freelist<Limit, A> {
     unsafe fn has_allocated(&self, ptr: NonNull<u8>, layout: alloc::Layout) -> bool {
         let layout = if self.manages(layout) { self.layout } else { layout };
-        self.base.has_allocated(ptr, layout)
+        self.base().has_allocated(ptr, layout)
     }
 
     fn allows_fallback(&self, layout: alloc::Layout) -> bool {
         let layout = if self.manages(layout) { self.layout } else { layout };
-        self.base.allows_fallback(layout)
+        self.base().allows_fallback(layout)
     }
 }
 
-unsafe impl<Limit: LimitParam, A: Allocator> Allocator for Freelist<Limit, A> {
+unsafe impl<Limit: LimitParam, A: Allocator + Clone> Allocator for Freelist<Limit, A> {
     fn allocate(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
         if !self.manages(layout) {
-            return self.base.allocate(layout);
+            return self.base().allocate(layout);
         }
-        if let Some(list) = self.list.get().next {
-            let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
-            self.list.set(Node { next });
-            self.list_len.set(unsafe { self.limit.dec_list_len(self.list_len.get()) });
-            Ok(NonNull::slice_from_raw_parts(list, self.layout.size()))
+        let mut list = self.list.lock().unwrap();
+        if let Some(next_ptr) = NonNull::new(*list.head.next.get_mut()) {
+            let next = unsafe { ptr::read(next_ptr.as_ptr() as *const Node) }.next;
+            list.head = Node { next };
+            list.len = unsafe { self.limit.dec_list_len(list.len) };
+            Ok(NonNull::slice_from_raw_parts(next_ptr, self.layout.size()))
         } else {
-            self.base.allocate(self.layout)
+            self.base().allocate(self.layout)
         }
     }
 
     fn allocate_zeroed(&self, layout: alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
         if !self.manages(layout) {
-            return self.base.allocate_zeroed(layout);
+            return self.base().allocate_zeroed(layout);
         }
-        if let Some(list) = self.list.get().next {
-            let next = unsafe { ptr::read(list.as_ptr() as *const Node) }.next;
-            self.list.set(Node { next });
-            self.list_len.set(unsafe { self.limit.dec_list_len(self.list_len.get()) });
-            let ptr = NonNull::slice_from_raw_parts(list, self.layout.size());
+        let mut list = self.list.lock().unwrap();
+        if let Some(next_ptr) = NonNull::new(*list.head.next.get_mut()) {
+            let next = unsafe { ptr::read(next_ptr.as_ptr() as *const Node) }.next;
+            list.head = Node { next };
+            list.len = unsafe { self.limit.dec_list_len(list.len) };
+            let ptr = NonNull::slice_from_raw_parts(next_ptr, self.layout.size());
             unsafe { ptr.as_mut_ptr().write_bytes(0, ptr.len()); }
             Ok(ptr)
         } else {
-            self.base.allocate_zeroed(self.layout)
+            self.base().allocate_zeroed(self.layout)
         }
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: alloc::Layout) {
-        if self.limit.limit_reached(self.list_len.get()) || !self.manages(layout) {
-            return self.base.deallocate(ptr, layout);
+        let mut list = self.list.lock().unwrap();
+        if self.limit.limit_reached(list.len) || !self.manages(layout) {
+            return self.base().deallocate(ptr, layout);
         }
-        ptr::write(ptr.as_ptr() as *mut Node, self.list.get());
-        self.list.set(Node { next: Some(ptr) });
-        self.list_len.set(unsafe { self.limit.inc_list_len(self.list_len.get()) });
+        ptr::write(ptr.as_ptr() as *mut Node, Node { next: AtomicPtr::new(*list.head.next.get_mut()) });
+        *list.head.next.get_mut() = ptr.as_ptr();
+        list.len = unsafe { self.limit.inc_list_len(list.len) };
     }
 
     unsafe fn grow(
@@ -191,7 +181,7 @@ unsafe impl<Limit: LimitParam, A: Allocator> Allocator for Freelist<Limit, A> {
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
         let old_layout = if self.manages(old_layout) { self.layout } else { old_layout };
-        self.base.grow(ptr, old_layout, new_layout)
+        self.base().grow(ptr, old_layout, new_layout)
     }
 
     unsafe fn grow_zeroed(
@@ -201,7 +191,7 @@ unsafe impl<Limit: LimitParam, A: Allocator> Allocator for Freelist<Limit, A> {
         new_layout: alloc::Layout
     ) -> Result<NonNull<[u8]>, AllocError> {
         let old_layout = if self.manages(old_layout) { self.layout } else { old_layout };
-        self.base.grow_zeroed(ptr, old_layout, new_layout)
+        self.base().grow_zeroed(ptr, old_layout, new_layout)
     }
 
     unsafe fn shrink(
@@ -218,6 +208,6 @@ unsafe impl<Limit: LimitParam, A: Allocator> Allocator for Freelist<Limit, A> {
         } else {
             old_layout
         };
-        self.base.shrink(ptr, old_layout, new_layout)
+        self.base().shrink(ptr, old_layout, new_layout)
     }
 }

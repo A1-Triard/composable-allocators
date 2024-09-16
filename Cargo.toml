@@ -37,6 +37,7 @@ maintenance = { status = "experimental" }
 [dependencies]
 const-default = "1.0.0"
 const-default-derive = "0.2.0"
+sync-no-std = "0.1.2"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow" }
