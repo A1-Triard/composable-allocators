@@ -18,8 +18,7 @@ exclude = [
 ]
 
 [features]
-default = ["global"]
-global = []
+default = []
 logging = []
 
 [package.metadata.docs.rs]

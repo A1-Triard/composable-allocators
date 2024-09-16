@@ -21,7 +21,6 @@ extern crate core;
 #[cfg(feature="logging")]
 extern crate panic_abort;
 
-#[cfg(feature="global")]
 extern crate alloc;
 
 mod base;
@@ -31,9 +30,7 @@ pub mod fallbacked;
 
 pub mod limited_up_to;
 
-#[cfg(feature="global")]
 mod global;
-#[cfg(feature="global")]
 pub use global::*;
 
 mod as_global;
