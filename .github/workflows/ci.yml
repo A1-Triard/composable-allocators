@@ -17,7 +17,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        features: ["", "--features=global", "--features=logging", "--features=logging,global"]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions-rs/toolchain@v1
@@ -26,13 +25,32 @@ jobs:
         override: true
     - run: "rustup component add clippy"
     - uses: actions/checkout@v2
-    - run: "cargo build --verbose --no-default-features ${{ matrix.features }}"
-    - run: "cargo test --verbose --tests --no-default-features ${{ matrix.features }}"
-    - run: "cargo test --verbose --doc --no-default-features ${{ matrix.features }}"
-    - run: "cargo doc --verbose --no-default-features ${{ matrix.features }}"
-    - run: "cargo build --verbose --release --no-default-features ${{ matrix.features }}"
-    - run: "cargo outdated --verbose --root-deps-only --exit-code 1 ${{ matrix.features }}"
-    - run: "cargo clippy --verbose --no-default-features ${{ matrix.features }}"
+    - run: "cargo build --verbose"
+    - run: "cargo test --verbose --tests"
+    - run: "cargo test --verbose --doc"
+    - run: "cargo doc --verbose"
+    - run: "cargo build --verbose --release"
+    - run: "cargo outdated --verbose --root-deps-only --exit-code 1"
+    - run: "cargo clippy --verbose --no-default-features"
+  logging:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        features: ["", ""]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+    - run: "rustup component add clippy"
+    - uses: actions/checkout@v2
+    - run: "cargo build --verbose --features=logging"
+    - run: "cargo doc --verbose --features=logging"
+    - run: "cargo build --verbose --release --features=logging"
+    - run: "cargo outdated --verbose --root-deps-only --exit-code 1 --features=logging"
+    - run: "cargo clippy --verbose --features=logging"
   ensure_no_std:
     strategy:
       fail-fast: false
