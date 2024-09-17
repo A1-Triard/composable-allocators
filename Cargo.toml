@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "composable-allocators"
-version = "0.3.0"
+version = "0.3.1"
 #rust-version = "nightly"
 authors = ["warlock <internalmike@gmail.com>"]
 description = "Composable memory allocators for new allocator API."
@@ -36,6 +36,7 @@ maintenance = { status = "experimental" }
 [dependencies]
 const-default = "1.0.0"
 const-default-derive = "0.2.0"
+print-no-std = "0.2.0"
 sync-no-std = "0.1.2"
 
 [lints.rust]
