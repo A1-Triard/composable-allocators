@@ -1,5 +1,4 @@
 #![feature(allocator_api)]
-#![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
