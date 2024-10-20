@@ -1,5 +1,4 @@
 #![feature(allocator_api)]
-#![feature(const_trait_impl)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![feature(slice_ptr_get)]
@@ -10,6 +9,7 @@
 #![doc(test(attr(allow(dead_code))))]
 #![doc(test(attr(allow(unused_variables))))]
 #![allow(clippy::collapsible_else_if)]
+#![allow(clippy::needless_lifetimes)]
 
 #![no_std]
 
