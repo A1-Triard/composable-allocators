@@ -30,6 +30,10 @@ jobs:
     - run: "cargo test --verbose --doc"
     - run: "cargo doc --verbose"
     - run: "cargo build --verbose --release"
+    - name: remove Cargo.lock
+      uses: JesseTG/rm@v1.0.3
+      with:
+        path: Cargo.lock
     - run: "cargo outdated --verbose --root-deps-only --exit-code 1"
     - run: "cargo clippy --verbose --no-default-features"
   ensure_no_std:
