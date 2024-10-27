@@ -2,7 +2,6 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![feature(slice_ptr_get)]
-#![feature(strict_provenance)]
 
 #![deny(warnings)]
 #![doc(test(attr(deny(warnings))))]
