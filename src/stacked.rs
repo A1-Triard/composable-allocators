@@ -88,7 +88,7 @@ impl Stacked {
 pub fn with_size<const BUF_LEN: usize, T>(
     f: impl for<'a> FnOnce(&'a Stacked) -> T
 ) -> T {
-    let mut buf: [MaybeUninit<u8>; BUF_LEN] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; BUF_LEN] = [MaybeUninit::uninit(); BUF_LEN];
     let buf_ptr = unsafe { NonNull::new_unchecked(buf.as_mut_ptr()) };
     assert!((isize::MAX as usize) - BUF_LEN >= buf_ptr.as_ptr() as usize);
     unsafe { Stacked::with_buf_raw(buf_ptr, BUF_LEN, f) }

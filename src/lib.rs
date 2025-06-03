@@ -1,5 +1,4 @@
 #![feature(allocator_api)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![feature(slice_ptr_get)]
 
