@@ -7,6 +7,7 @@
 #![doc(test(attr(allow(dead_code))))]
 #![doc(test(attr(allow(unused_variables))))]
 #![allow(clippy::collapsible_else_if)]
+#![allow(clippy::manual_is_multiple_of)]
 #![allow(clippy::needless_lifetimes)]
 
 #![no_std]
